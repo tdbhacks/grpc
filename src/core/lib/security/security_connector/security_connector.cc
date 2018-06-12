@@ -1140,6 +1140,20 @@ namespace grpc_core {
 
 tsi_ssl_root_certs_store* DefaultSslRootStore::default_root_store_;
 grpc_slice DefaultSslRootStore::default_pem_root_certs_;
+const char* DefaultSslRootStore::linux_cert_files_[] = {
+    "/etc/ssl/certs/ca-certificates.crt",
+    "/etc/pki/tls/certs/ca-bundle.crt",
+    "/etc/ssl/ca-bundle.pem",
+    "/etc/pki/tls/cacert.pem",
+    "/etc/pki/ca-trust/extracted/pem/tls-ca-bundle.pem"
+};
+const char* DefaultSslRootStore::linux_cert_directories_[] = {
+  "/etc/ssl/certs",
+  "/system/etc/security/cacerts",
+  "/usr/local/share/certs",
+  "/etc/pki/tls/certs",
+  "/etc/openssl/certs"
+};
 
 const tsi_ssl_root_certs_store* DefaultSslRootStore::GetRootStore() {
   InitRootStore();
@@ -1182,6 +1196,21 @@ grpc_slice DefaultSslRootStore::ComputePemRootCerts() {
       ovrd_res != GRPC_SSL_ROOTS_OVERRIDE_FAIL_PERMANENTLY) {
     GRPC_LOG_IF_ERROR("load_file",
                       grpc_load_file(installed_roots_path, 1, &result));
+  }
+  return result;
+}
+
+const char* DefaultSslRootStore::GetSystemRootCertPath() {
+  // TODO: add use_system_certs flag check
+  // TODO: add platform string checks
+  FILE* cert_file;
+  const char* result = nullptr;
+  for (size_t i = 0; i < 5; i++) {
+    cert_file = fopen(linux_cert_files_[i], "r");
+    if (cert_file != nullptr) {
+      fclose(cert_file);
+      result = linux_cert_files_[i];
+    }
   }
   return result;
 }

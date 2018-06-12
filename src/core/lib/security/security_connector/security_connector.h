@@ -266,6 +266,9 @@ class DefaultSslRootStore {
   // Construct me not!
   DefaultSslRootStore();
 
+  // Return the path for os-specific root certificates.
+  static const char* GetSystemRootCertPath();
+
   // Initialization of default SSL root store.
   static void InitRootStore();
 
@@ -277,6 +280,10 @@ class DefaultSslRootStore {
 
   // Default PEM root certificates.
   static grpc_slice default_pem_root_certs_;
+
+  // List of possible linux certificate files and directories
+  static const char* linux_cert_files_[];
+  static const char* linux_cert_directories_[];
 };
 
 }  // namespace grpc_core
