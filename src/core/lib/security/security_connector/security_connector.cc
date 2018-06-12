@@ -57,6 +57,24 @@ static const char* installed_roots_path =
     INSTALL_PREFIX "/share/grpc/roots.pem";
 #endif
 
+/* -- System certs identification -- */
+
+char* use_system_certs = gpr_getenv(GRPC_SYSTEM_SSL_ROOTS_FLAG);
+
+#if defined __linux__
+   // Linux environment (any GNU/Linux distribution)
+   String platform = “linux”;
+
+#elif defined _WIN32
+   // Windows environment (32 and 64 bit)
+   String platform = “windows”;
+
+#elif defined __APPLE__ && __MACH__
+   // MacOS / OSX environment
+   String platform = “apple”;
+
+#endif
+
 /* -- Overridden default roots. -- */
 
 static grpc_ssl_roots_override_callback ssl_roots_override_cb = nullptr;
@@ -1191,28 +1209,43 @@ grpc_slice DefaultSslRootStore::ComputePemRootCerts() {
     }
     gpr_free(pem_root_certs);
   }
-  // Fall back to installed certs if needed.
+  // Use system certs if needed.
   if (GRPC_SLICE_IS_EMPTY(result) &&
       ovrd_res != GRPC_SSL_ROOTS_OVERRIDE_FAIL_PERMANENTLY) {
-    GRPC_LOG_IF_ERROR("load_file",
+	char* system_root_certs = GetSystemRootCertPath();
+	if (system_root_certs != nullptr) {
+	    GRPC_LOG_IF_ERROR("load_file",
+                      grpc_load_file(system_root_certs, 1, &result));
+	}
+	else {    
+    	    // Fallback to certs manually shipped with gRPC
+    	    GRPC_LOG_IF_ERROR("load_file",
                       grpc_load_file(installed_roots_path, 1, &result));
+	}
   }
   return result;
 }
 
 const char* DefaultSslRootStore::GetSystemRootCertPath() {
-  // TODO: add use_system_certs flag check
-  // TODO: add platform string checks
-  FILE* cert_file;
-  const char* result = nullptr;
-  for (size_t i = 0; i < 5; i++) {
-    cert_file = fopen(linux_cert_files_[i], "r");
-    if (cert_file != nullptr) {
-      fclose(cert_file);
-      result = linux_cert_files_[i];
-    }
-  }
-  return result;
+	if (platform.compare(“linux”)) {
+	    FILE* cert_file;
+	    const char* result = nullptr;
+	    for (size_t i = 0; i < 5; i++) {
+	        cert_file = fopen(linux_cert_files_[i], "r");
+	        if (cert_file != nullptr) {
+	          fclose(cert_file);
+	          result = linux_cert_files_[i];
+	        }
+	    }
+	    return result;
+	}
+	else if (platform.compare(“windows”) {
+		// Export certs from Windows trust store (certutil?)
+	}
+	else if (platform.compare(“apple”) {
+		// Export .pem file from keychain (using API?)
+	}
+	return nullptr;
 }
 
 void DefaultSslRootStore::InitRootStore() {
