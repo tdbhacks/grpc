@@ -1244,7 +1244,7 @@ const char* DefaultSslRootStore::GetSystemRootCertPath() {
 	        }
 	    }
 	    return result;
-	}	/*else if (platform.compare("windows") {
+	}	/*else if (platform.compare("windows")) {
 		//TODO Export certs from Windows trust store (certutil?)
 	}
 	else if (platform.compare("apple") {
