@@ -284,6 +284,7 @@ class DefaultSslRootStore {
   // List of possible linux certificate files and directories
   static const char* linux_cert_files_[];
   static const char* linux_cert_directories_[];
+  static size_t num_cert_files_, num_cert_dirs_;
 };
 
 }  // namespace grpc_core

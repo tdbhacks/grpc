@@ -57,21 +57,24 @@ static const char* installed_roots_path =
     INSTALL_PREFIX "/share/grpc/roots.pem";
 #endif
 
-/* -- System certs identification -- */
+#ifndef GRPC_SYSTEM_SSL_ROOTS_FLAG
+#define GRPC_SYSTEM_SSL_ROOTS_FLAG "GRPC_SYSTEM_SSL_ROOTS_FLAG"
+#endif
 
+/* -- System certs identification -- */
 char* use_system_certs = gpr_getenv(GRPC_SYSTEM_SSL_ROOTS_FLAG);
 
 #if defined __linux__
    // Linux environment (any GNU/Linux distribution)
-   String platform = “linux”;
+   std::string platform = "linux";
 
 #elif defined _WIN32
    // Windows environment (32 and 64 bit)
-   String platform = “windows”;
+   std::string platform = "windows";
 
 #elif defined __APPLE__ && __MACH__
    // MacOS / OSX environment
-   String platform = “apple”;
+   std::string platform = "apple";
 
 #endif
 
@@ -1172,6 +1175,8 @@ const char* DefaultSslRootStore::linux_cert_directories_[] = {
   "/etc/pki/tls/certs",
   "/etc/openssl/certs"
 };
+size_t DefaultSslRootStore::num_cert_files_ = 5;
+size_t DefaultSslRootStore::num_cert_dirs_ = 5;
 
 const tsi_ssl_root_certs_store* DefaultSslRootStore::GetRootStore() {
   InitRootStore();
@@ -1212,12 +1217,12 @@ grpc_slice DefaultSslRootStore::ComputePemRootCerts() {
   // Use system certs if needed.
   if (GRPC_SLICE_IS_EMPTY(result) &&
       ovrd_res != GRPC_SSL_ROOTS_OVERRIDE_FAIL_PERMANENTLY) {
-	char* system_root_certs = GetSystemRootCertPath();
+	const char* system_root_certs = GetSystemRootCertPath();
 	if (system_root_certs != nullptr) {
 	    GRPC_LOG_IF_ERROR("load_file",
                       grpc_load_file(system_root_certs, 1, &result));
 	}
-	else {    
+	else {
     	    // Fallback to certs manually shipped with gRPC
     	    GRPC_LOG_IF_ERROR("load_file",
                       grpc_load_file(installed_roots_path, 1, &result));
@@ -1227,11 +1232,11 @@ grpc_slice DefaultSslRootStore::ComputePemRootCerts() {
 }
 
 const char* DefaultSslRootStore::GetSystemRootCertPath() {
-	if (platform.compare(“linux”)) {
+	if (platform.compare("linux")) {
 	    //TODO case in which there's no bundle, just single cert files
 	    FILE* cert_file;
 	    const char* result = nullptr;
-	    for (size_t i = 0; i < 5; i++) {
+	    for (size_t i = 0; i < num_cert_files_; i++) {
 	        cert_file = fopen(linux_cert_files_[i], "r");
 	        if (cert_file != nullptr) {
 	          fclose(cert_file);
@@ -1239,13 +1244,12 @@ const char* DefaultSslRootStore::GetSystemRootCertPath() {
 	        }
 	    }
 	    return result;
-	}
-	else if (platform.compare(“windows”) {
+	}	/*else if (platform.compare("windows") {
 		//TODO Export certs from Windows trust store (certutil?)
 	}
-	else if (platform.compare(“apple”) {
+	else if (platform.compare("apple") {
 		//TODO Export .pem file from keychain (using API?)
-	}
+	}*/
 	return nullptr;
 }
 
