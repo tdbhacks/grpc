@@ -262,12 +262,13 @@ class DefaultSslRootStore {
   // This function is protected instead of private, so that it can be tested.
   static grpc_slice ComputePemRootCerts();
 
+  // Return the path for os-specific root certificates.
+  // This function is also protected so that it can be tested.
+  static const char* GetSystemRootCerts();
+
  private:
   // Construct me not!
   DefaultSslRootStore();
-
-  // Return the path for os-specific root certificates.
-  static const char* GetSystemRootCertPath();
 
   // Initialization of default SSL root store.
   static void InitRootStore();

@@ -22,6 +22,7 @@
 
 #include <stdbool.h>
 #include <string.h>
+#include <dirent.h>
 
 #include <grpc/slice_buffer.h>
 #include <grpc/support/alloc.h>
@@ -1217,7 +1218,7 @@ grpc_slice DefaultSslRootStore::ComputePemRootCerts() {
   // Use system certs if needed.
   if (GRPC_SLICE_IS_EMPTY(result) &&
       ovrd_res != GRPC_SSL_ROOTS_OVERRIDE_FAIL_PERMANENTLY) {
-	const char* system_root_certs = GetSystemRootCertPath();
+	const char* system_root_certs = GetSystemRootCerts();
 	if (system_root_certs != nullptr) {
 	    GRPC_LOG_IF_ERROR("load_file",
                       grpc_load_file(system_root_certs, 1, &result));
@@ -1231,7 +1232,7 @@ grpc_slice DefaultSslRootStore::ComputePemRootCerts() {
   return result;
 }
 
-const char* DefaultSslRootStore::GetSystemRootCertPath() {
+const char* DefaultSslRootStore::GetSystemRootCerts() {
 	if (platform.compare("linux")) {
 	    //TODO case in which there's no bundle, just single cert files
 	    FILE* cert_file;
@@ -1243,6 +1244,13 @@ const char* DefaultSslRootStore::GetSystemRootCertPath() {
 	          result = linux_cert_files_[i];
 	        }
 	    }
+      DIR* cert_dir;
+      for (size_t i = 0; i < num_cert_dirs_; i++) {
+        cert_dir = opendir(linux_cert_directories_[i]);
+        if (cert_dir != nullptr) {
+          closedir(cert_dir);
+        }
+      }
 	    return result;
 	}	/*else if (platform.compare("windows") {
 		//TODO Export certs from Windows trust store (certutil?)
