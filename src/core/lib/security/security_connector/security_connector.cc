@@ -1228,6 +1228,7 @@ grpc_slice DefaultSslRootStore::ComputePemRootCerts() {
 
 const char* DefaultSslRootStore::GetSystemRootCertPath() {
 	if (platform.compare(“linux”)) {
+	    //TODO case in which there's no bundle, just single cert files
 	    FILE* cert_file;
 	    const char* result = nullptr;
 	    for (size_t i = 0; i < 5; i++) {
@@ -1240,10 +1241,10 @@ const char* DefaultSslRootStore::GetSystemRootCertPath() {
 	    return result;
 	}
 	else if (platform.compare(“windows”) {
-		// Export certs from Windows trust store (certutil?)
+		//TODO Export certs from Windows trust store (certutil?)
 	}
 	else if (platform.compare(“apple”) {
-		// Export .pem file from keychain (using API?)
+		//TODO Export .pem file from keychain (using API?)
 	}
 	return nullptr;
 }
