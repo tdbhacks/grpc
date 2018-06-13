@@ -1244,11 +1244,13 @@ const char* DefaultSslRootStore::GetSystemRootCerts() {
 	          result = linux_cert_files_[i];
 	        }
 	    }
-      DIR* cert_dir;
-      for (size_t i = 0; i < num_cert_dirs_; i++) {
-        cert_dir = opendir(linux_cert_directories_[i]);
-        if (cert_dir != nullptr) {
-          closedir(cert_dir);
+      if (result == nullptr) { // If no cert file was found try directories
+        DIR* cert_dir;
+        for (size_t i = 0; i < num_cert_dirs_; i++) {
+          cert_dir = opendir(linux_cert_directories_[i]);
+          if (cert_dir != nullptr) { // If directory exists
+            closedir(cert_dir);
+          }
         }
       }
 	    return result;
