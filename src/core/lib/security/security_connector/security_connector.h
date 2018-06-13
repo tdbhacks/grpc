@@ -302,6 +302,8 @@ class DefaultSslRootStore {
   static const char* linux_cert_files_[];
   static const char* linux_cert_directories_[];
   static size_t num_cert_files_, num_cert_dirs_;
+
+  // Variable to hold the name of the os
   static const char* platform;
 };
 
