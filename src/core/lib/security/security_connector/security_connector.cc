@@ -65,20 +65,6 @@ static const char* installed_roots_path =
 /* -- System certs identification -- */
 char* use_system_certs = gpr_getenv(GRPC_SYSTEM_SSL_ROOTS_FLAG);
 
-#if defined __linux__
-   // Linux environment (any GNU/Linux distribution)
-   std::string platform = "linux";
-
-#elif defined _WIN32
-   // Windows environment (32 and 64 bit)
-   std::string platform = "windows";
-
-#elif defined __APPLE__ && __MACH__
-   // MacOS / OSX environment
-   std::string platform = "apple";
-
-#endif
-
 /* -- Overridden default roots. -- */
 
 static grpc_ssl_roots_override_callback ssl_roots_override_cb = nullptr;
@@ -1178,6 +1164,20 @@ const char* DefaultSslRootStore::linux_cert_directories_[] = {
 };
 size_t DefaultSslRootStore::num_cert_files_ = 5;
 size_t DefaultSslRootStore::num_cert_dirs_ = 5;
+
+#if defined __linux__
+   // Linux environment (any GNU/Linux distribution)
+   std::string DefaultSslRootStore::platform = "linux";
+
+#elif defined _WIN32
+   // Windows environment (32 and 64 bit)
+   std::string DefaultSslRootStore::platform = "windows";
+
+#elif defined __APPLE__ && __MACH__
+   // MacOS / OSX environment
+   std::string DefaultSslRootStore::platform = "apple";
+
+#endif
 
 const tsi_ssl_root_certs_store* DefaultSslRootStore::GetRootStore() {
   InitRootStore();

@@ -363,10 +363,14 @@ static void test_ipv6_address_san(void) {
 namespace grpc_core {
 namespace {
 
-class TestDefafaultSllRootStore : public DefaultSslRootStore {
+class TestDefaultSslRootStore : public DefaultSslRootStore {
  public:
   static grpc_slice ComputePemRootCertsForTesting() {
     return ComputePemRootCerts();
+  }
+
+  static const char* GetSystemRootCertsForTesting() {
+    return GetSystemRootCerts();
   }
 };
 
@@ -389,7 +393,7 @@ static void test_default_ssl_roots(void) {
   gpr_setenv(GRPC_DEFAULT_SSL_ROOTS_FILE_PATH_ENV_VAR, "");
   grpc_set_ssl_roots_override_callback(override_roots_success);
   grpc_slice roots =
-      grpc_core::TestDefafaultSllRootStore::ComputePemRootCertsForTesting();
+      grpc_core::TestDefaultSslRootStore::ComputePemRootCertsForTesting();
   char* roots_contents = grpc_slice_to_c_string(roots);
   grpc_slice_unref(roots);
   GPR_ASSERT(strcmp(roots_contents, roots_for_override_api) == 0);
@@ -398,7 +402,7 @@ static void test_default_ssl_roots(void) {
   /* Now let's set the env var: We should get the contents pointed value
      instead. */
   gpr_setenv(GRPC_DEFAULT_SSL_ROOTS_FILE_PATH_ENV_VAR, roots_env_var_file_path);
-  roots = grpc_core::TestDefafaultSllRootStore::ComputePemRootCertsForTesting();
+  roots = grpc_core::TestDefaultSslRootStore::ComputePemRootCertsForTesting();
   roots_contents = grpc_slice_to_c_string(roots);
   grpc_slice_unref(roots);
   GPR_ASSERT(strcmp(roots_contents, roots_for_env_var) == 0);
@@ -407,7 +411,7 @@ static void test_default_ssl_roots(void) {
   /* Now reset the env var. We should fall back to the value overridden using
      the api. */
   gpr_setenv(GRPC_DEFAULT_SSL_ROOTS_FILE_PATH_ENV_VAR, "");
-  roots = grpc_core::TestDefafaultSllRootStore::ComputePemRootCertsForTesting();
+  roots = grpc_core::TestDefaultSslRootStore::ComputePemRootCertsForTesting();
   roots_contents = grpc_slice_to_c_string(roots);
   grpc_slice_unref(roots);
   GPR_ASSERT(strcmp(roots_contents, roots_for_override_api) == 0);
@@ -416,15 +420,28 @@ static void test_default_ssl_roots(void) {
   /* Now setup a permanent failure for the overridden roots and we should get
      an empty slice. */
   grpc_set_ssl_roots_override_callback(override_roots_permanent_failure);
-  roots = grpc_core::TestDefafaultSllRootStore::ComputePemRootCertsForTesting();
+  roots = grpc_core::TestDefaultSslRootStore::ComputePemRootCertsForTesting();
   GPR_ASSERT(GRPC_SLICE_IS_EMPTY(roots));
   const tsi_ssl_root_certs_store* root_store =
-      grpc_core::TestDefafaultSllRootStore::GetRootStore();
+      grpc_core::TestDefaultSslRootStore::GetRootStore();
   GPR_ASSERT(root_store == nullptr);
 
   /* Cleanup. */
   remove(roots_env_var_file_path);
   gpr_free(roots_env_var_file_path);
+}
+
+static void test_system_ssl_roots() {
+  /* Test that the SetPlatform function operates correctly */
+  DefaultSslRootStore::SetPlatform("value");
+  GPR_ASSERT(DefaultSslRootStore::platform == "value");
+
+  /* Test that the GetSystemRootCerts function returns a nullptr when the
+     platform variable doesn't match one of the options. */
+  DefaultSslRootStore::SetPlatform("test");
+  const char* path =
+      grpc_core::TestDefaultSslRootStore::GetSystemRootCertsForTesting();
+  GPR_ASSERT(path == nullptr);
 }
 
 int main(int argc, char** argv) {
@@ -438,6 +455,7 @@ int main(int argc, char** argv) {
   test_cn_and_multiple_sans_and_others_ssl_peer_to_auth_context();
   test_ipv6_address_san();
   test_default_ssl_roots();
+  test_system_ssl_roots();
 
   grpc_shutdown();
   return 0;
