@@ -1207,7 +1207,8 @@ grpc_slice DefaultSslRootStore::ComputePemRootCerts() {
   }
   // Use system certs if needed.
   if (GRPC_SLICE_IS_EMPTY(result) &&
-      ovrd_res != GRPC_SSL_ROOTS_OVERRIDE_FAIL_PERMANENTLY) {
+      ovrd_res != GRPC_SSL_ROOTS_OVERRIDE_FAIL_PERMANENTLY &&
+      use_system_certs != nullptr) {
       const char* system_root_certs = GetSystemRootCerts();
       if (system_root_certs != nullptr) {
           GRPC_LOG_IF_ERROR("load_file",
