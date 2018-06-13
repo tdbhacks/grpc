@@ -263,9 +263,14 @@ class DefaultSslRootStore {
   // This function is protected instead of private, so that it can be tested.
   static grpc_slice ComputePemRootCerts();
 
-  // Return the path for os-specific root certificates.
+  // Returns the path for os-specific root certificates.
   // This function is also protected so that it can be tested.
   static const char* GetSystemRootCerts();
+
+  // Creates a bundle file from all the existing system certificates.
+  // Returns the path to the bundle file.
+  // This function is also protected so that it can be tested.
+  static const char* CreateRootCertsBundle(const char* path);
 
   // Sets the platform string
   // Required for GetSystemRootCerts() tests

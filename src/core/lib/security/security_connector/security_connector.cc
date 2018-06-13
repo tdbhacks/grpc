@@ -24,6 +24,9 @@
 #include <string.h>
 #include <dirent.h>
 
+#include <fstream>
+#include <experimental/filesystem>
+
 #include <grpc/slice_buffer.h>
 #include <grpc/support/alloc.h>
 #include <grpc/support/log.h>
@@ -1218,49 +1221,75 @@ grpc_slice DefaultSslRootStore::ComputePemRootCerts() {
   // Use system certs if needed.
   if (GRPC_SLICE_IS_EMPTY(result) &&
       ovrd_res != GRPC_SSL_ROOTS_OVERRIDE_FAIL_PERMANENTLY) {
-	const char* system_root_certs = GetSystemRootCerts();
-	if (system_root_certs != nullptr) {
-	    GRPC_LOG_IF_ERROR("load_file",
+      const char* system_root_certs = GetSystemRootCerts();
+      if (system_root_certs != nullptr) {
+          GRPC_LOG_IF_ERROR("load_file",
                       grpc_load_file(system_root_certs, 1, &result));
-	}
-	else {
-    	    // Fallback to certs manually shipped with gRPC
-    	    GRPC_LOG_IF_ERROR("load_file",
+        }
+        else {
+            // Fallback to certs manually shipped with gRPC
+            GRPC_LOG_IF_ERROR("load_file",
                       grpc_load_file(installed_roots_path, 1, &result));
-	}
+        }
   }
   return result;
 }
 
 const char* DefaultSslRootStore::GetSystemRootCerts() {
-	if (platform.compare("linux")) {
-	    //TODO case in which there's no bundle, just single cert files
-	    FILE* cert_file;
-	    const char* result = nullptr;
-	    for (size_t i = 0; i < num_cert_files_; i++) {
-	        cert_file = fopen(linux_cert_files_[i], "r");
-	        if (cert_file != nullptr) {
-	          fclose(cert_file);
-	          result = linux_cert_files_[i];
-	        }
-	    }
-      if (result == nullptr) { // If no cert file was found try directories
-        DIR* cert_dir;
-        for (size_t i = 0; i < num_cert_dirs_; i++) {
-          cert_dir = opendir(linux_cert_directories_[i]);
-          if (cert_dir != nullptr) { // If directory exists
-            closedir(cert_dir);
-          }
+  if (platform.compare("linux")) {
+    FILE* cert_file;
+    const char* result = nullptr;
+    for (size_t i = 0; i < num_cert_files_; i++) {
+        cert_file = fopen(linux_cert_files_[i], "r");
+        if (cert_file != nullptr) {
+            fclose(cert_file);
+            result = linux_cert_files_[i];
         }
-      }
-	    return result;
-	}	/*else if (platform.compare("windows")) {
-		//TODO Export certs from Windows trust store (certutil?)
+    }
+    if (result == nullptr) { // If no cert file was found try directories
+       	DIR* cert_dir;
+	const char* found_cert_dir = nullptr;
+       	for (size_t i = 0; i < num_cert_dirs_; i++) {
+       	    cert_dir = opendir(linux_cert_directories_[i]);
+       	    if (cert_dir != nullptr) { // If directory exists
+		found_cert_dir = linux_cert_directories_[i];
+       		closedir(cert_dir);
+       	    }
+       	}
+	if (cert_dir != nullptr && found_cert_dir != nullptr) {
+	    
+	    result = CreateRootCertsBundle(found_cert_dir);
+        }
+    }
+    return result;
+  } /*else if (platform.compare("windows")) {
+    //TODO Export certs from Windows trust store (certutil?)
+  } else if (platform.compare("apple") {
+    //TODO Export .pem file from keychain (using API?)
+  }*/
+  return nullptr;
+}
+
+const char* DefaultSslRootStore::CreateRootCertsBundle(const char* path) {
+    namespace stdfs = std::experimental::filesystem;
+
+    const char* bundle_path = "system_roots.pem"; //TODO where should we save the bundle file? "/etc"?
+    std::ofstream bundle_ca_file(bundle_path);
+    
+    // http://en.cppreference.com/w/cpp/experimental/fs/directory_iterator (unspecified order)
+    const stdfs::directory_iterator end{};
+    
+    for (stdfs::directory_iterator iter{path} ; iter != end ; ++iter)
+    {
+        if (stdfs::is_regular_file(*iter)) { // ignores subdirectories
+            std::ifstream ca_file(iter->path().string());
+	    bundle_ca_file << ca_file.rdbuf();
+	    ca_file.close();
 	}
-	else if (platform.compare("apple") {
-		//TODO Export .pem file from keychain (using API?)
-	}*/
-	return nullptr;
+    }
+
+    bundle_ca_file.close();
+    return bundle_path;
 }
 
 void DefaultSslRootStore::InitRootStore() {
