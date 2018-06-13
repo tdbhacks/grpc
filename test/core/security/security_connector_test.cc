@@ -372,6 +372,18 @@ class TestDefaultSslRootStore : public DefaultSslRootStore {
   static const char* GetSystemRootCertsForTesting() {
     return GetSystemRootCerts();
   }
+
+  static void SetPlatformForTesting(const char* platform) {
+    SetPlatform(platform);
+  }
+
+  static const char* GetPlatformForTesting() {
+    return GetPlatform();
+  }
+
+  static void DetectPlatformForTesting() {
+    DetectPlatform();
+  }
 };
 
 }  // namespace
@@ -433,15 +445,34 @@ static void test_default_ssl_roots(void) {
 
 static void test_system_ssl_roots() {
   /* Test that the SetPlatform function operates correctly */
-  DefaultSslRootStore::SetPlatform("value");
-  GPR_ASSERT(DefaultSslRootStore::platform == "value");
+  grpc_core::TestDefaultSslRootStore::SetPlatformForTesting("value");
+  const char* platform =
+      grpc_core::TestDefaultSslRootStore::GetPlatformForTesting();
+  GPR_ASSERT(strcmp(platform, "value") == 0);
 
   /* Test that the GetSystemRootCerts function returns a nullptr when the
      platform variable doesn't match one of the options. */
-  DefaultSslRootStore::SetPlatform("test");
+  grpc_core::TestDefaultSslRootStore::SetPlatformForTesting("test");
   const char* path =
       grpc_core::TestDefaultSslRootStore::GetSystemRootCertsForTesting();
   GPR_ASSERT(path == nullptr);
+
+  /* Test that the DetectPlatform function correctly detects the operating
+     system */
+  grpc_core::TestDefaultSslRootStore::DetectPlatformForTesting();
+  platform = grpc_core::TestDefaultSslRootStore::GetPlatformForTesting();
+#if defined __linux__
+  // Linux environment (any GNU/Linux distribution)
+  GPR_ASSERT(strcmp(platform, "linux") == 0);
+#elif defined _WIN32
+  // Windows environment (32 and 64 bit)
+  GPR_ASSERT(strcmp(platform, "windows") == 0);
+#elif defined __APPLE__ && __MACH__
+  // MacOS / OSX environment
+  GPR_ASSERT(strcmp(platform, "apple") == 0);
+#else
+  GPR_ERROR("OS is not linux, windows, or apple");
+#endif
 }
 
 int main(int argc, char** argv) {

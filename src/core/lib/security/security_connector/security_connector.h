@@ -22,7 +22,7 @@
 #include <grpc/support/port_platform.h>
 
 #include <stdbool.h>
-#include <string>
+#include <string.h>
 
 #include <grpc/grpc_security.h>
 
@@ -267,9 +267,15 @@ class DefaultSslRootStore {
   // This function is also protected so that it can be tested.
   static const char* GetSystemRootCerts();
 
-  // Sets the platform string
+  // Detect the os platform and set the platform variable to it
+  // Protected for testing
+  static void DetectPlatform();
+
+  // Set and get the platform variable
   // Required for GetSystemRootCerts() tests
-  static void SetPlatform(std::string pform) { platform = pform; }
+  static void SetPlatform(const char* pform) { platform = pform; }
+  static const char* GetPlatform() { return platform; }
+
 
  private:
   // Construct me not!
@@ -291,7 +297,7 @@ class DefaultSslRootStore {
   static const char* linux_cert_files_[];
   static const char* linux_cert_directories_[];
   static size_t num_cert_files_, num_cert_dirs_;
-  static std::string platform;
+  static const char* platform;
 };
 
 }  // namespace grpc_core

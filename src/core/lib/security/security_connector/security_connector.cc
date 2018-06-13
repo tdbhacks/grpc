@@ -1164,20 +1164,7 @@ const char* DefaultSslRootStore::linux_cert_directories_[] = {
 };
 size_t DefaultSslRootStore::num_cert_files_ = 5;
 size_t DefaultSslRootStore::num_cert_dirs_ = 5;
-
-#if defined __linux__
-   // Linux environment (any GNU/Linux distribution)
-   std::string DefaultSslRootStore::platform = "linux";
-
-#elif defined _WIN32
-   // Windows environment (32 and 64 bit)
-   std::string DefaultSslRootStore::platform = "windows";
-
-#elif defined __APPLE__ && __MACH__
-   // MacOS / OSX environment
-   std::string DefaultSslRootStore::platform = "apple";
-
-#endif
+const char* DefaultSslRootStore::platform;
 
 const tsi_ssl_root_certs_store* DefaultSslRootStore::GetRootStore() {
   InitRootStore();
@@ -1234,7 +1221,7 @@ grpc_slice DefaultSslRootStore::ComputePemRootCerts() {
 }
 
 const char* DefaultSslRootStore::GetSystemRootCerts() {
-	if (platform.compare("linux")) {
+	if (strcmp(platform, "linux") == 0) {
 	    //TODO case in which there's no bundle, just single cert files
 	    FILE* cert_file;
 	    const char* result = nullptr;
@@ -1262,6 +1249,19 @@ const char* DefaultSslRootStore::GetSystemRootCerts() {
 		//TODO Export .pem file from keychain (using API?)
 	}*/
 	return nullptr;
+}
+
+void DefaultSslRootStore::DetectPlatform() {
+#if defined __linux__
+     // Linux environment (any GNU/Linux distribution)
+     SetPlatform("linux");
+#elif defined _WIN32
+     // Windows environment (32 and 64 bit)
+     SetPlatform("windows");
+#elif defined __APPLE__ && __MACH__
+     // MacOS / OSX environment
+     SetPlatform("apple");
+#endif
 }
 
 void DefaultSslRootStore::InitRootStore() {
