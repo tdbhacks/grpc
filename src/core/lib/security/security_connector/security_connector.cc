@@ -1217,17 +1217,18 @@ grpc_slice DefaultSslRootStore::ComputePemRootCerts() {
   }
   // Use system certs if needed.
   if (GRPC_SLICE_IS_EMPTY(result) &&
-      ovrd_res != GRPC_SSL_ROOTS_OVERRIDE_FAIL_PERMANENTLY) {
-	const char* system_root_certs = GetSystemRootCerts();
-	if (system_root_certs != nullptr) {
-	    GRPC_LOG_IF_ERROR("load_file",
-                      grpc_load_file(system_root_certs, 1, &result));
-	}
-	else {
-    	    // Fallback to certs manually shipped with gRPC
-    	    GRPC_LOG_IF_ERROR("load_file",
-                      grpc_load_file(installed_roots_path, 1, &result));
-	}
+      ovrd_res != GRPC_SSL_ROOTS_OVERRIDE_FAIL_PERMANENTLY &&
+      use_system_certs != nullptr) {
+  	const char* system_root_certs = GetSystemRootCerts();
+  	if (system_root_certs != nullptr) {
+  	    GRPC_LOG_IF_ERROR("load_file",
+                        grpc_load_file(system_root_certs, 1, &result));
+  	}
+  	else {
+      	    // Fallback to certs manually shipped with gRPC
+      	    GRPC_LOG_IF_ERROR("load_file",
+                        grpc_load_file(installed_roots_path, 1, &result));
+  	}
   }
   return result;
 }
