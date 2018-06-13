@@ -1223,10 +1223,10 @@ grpc_slice DefaultSslRootStore::ComputePemRootCerts() {
 }
 
 const char* DefaultSslRootStore::GetSystemRootCerts() {
+  const char* result = nullptr;
 	if (strcmp(platform, "linux") == 0) {
     //TODO case in which there's no bundle, just single cert files
     FILE* cert_file;
-    const char* result = nullptr;
     for (size_t i = 0; i < num_cert_files_; i++) {
         cert_file = fopen(linux_cert_files_[i], "r");
         if (cert_file != nullptr) {
