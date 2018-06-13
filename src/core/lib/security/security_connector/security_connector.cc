@@ -1224,47 +1224,36 @@ grpc_slice DefaultSslRootStore::ComputePemRootCerts() {
 
 const char* DefaultSslRootStore::GetSystemRootCerts() {
 	if (strcmp(platform, "linux") == 0) {
-	    //TODO case in which there's no bundle, just single cert files
-	    FILE* cert_file;
-	    const char* result = nullptr;
-	    for (size_t i = 0; i < num_cert_files_; i++) {
-	        cert_file = fopen(linux_cert_files_[i], "r");
-	        if (cert_file != nullptr) {
-	          fclose(cert_file);
-	          result = linux_cert_files_[i];
-	        }
-	    }
-      if (result == nullptr) { // If no cert file was found try directories
-        DIR* cert_dir;
-        for (size_t i = 0; i < num_cert_dirs_; i++) {
-          cert_dir = opendir(linux_cert_directories_[i]);
-          if (cert_dir != nullptr) { // If directory exists
-            closedir(cert_dir);
-          }
+    //TODO case in which there's no bundle, just single cert files
+    FILE* cert_file;
+    const char* result = nullptr;
+    for (size_t i = 0; i < num_cert_files_; i++) {
+        cert_file = fopen(linux_cert_files_[i], "r");
+        if (cert_file != nullptr) {
+          fclose(cert_file);
+          result = linux_cert_files_[i];
         }
     }
     if (result == nullptr) { // If no cert file was found try directories
-       	DIR* cert_dir;
-	const char* found_cert_dir = nullptr;
-       	for (size_t i = 0; i < num_cert_dirs_; i++) {
-       	    cert_dir = opendir(linux_cert_directories_[i]);
-       	    if (cert_dir != nullptr) { // If directory exists
-		found_cert_dir = linux_cert_directories_[i];
+     	DIR* cert_dir;
+    	const char* found_cert_dir = nullptr;
+     	for (size_t i = 0; i < num_cert_dirs_; i++) {
+   	    cert_dir = opendir(linux_cert_directories_[i]);
+   	    if (cert_dir != nullptr) { // If directory exists
+      		found_cert_dir = linux_cert_directories_[i];
        		closedir(cert_dir);
-       	    }
-       	}
-	if (cert_dir != nullptr && found_cert_dir != nullptr) {
-
-	    result = CreateRootCertsBundle(found_cert_dir);
-        }
+   	    }
+     	}
+    	if (cert_dir != nullptr && found_cert_dir != nullptr) {
+  	    result = CreateRootCertsBundle(found_cert_dir);
+      }
     }
-    return result;
   } /*else if (platform.compare("windows")) {
     //TODO Export certs from Windows trust store (certutil?)
   } else if (platform.compare("apple") {
     //TODO Export .pem file from keychain (using API?)
   }*/
-  return nullptr;
+  return result;
 }
 
 const char* DefaultSslRootStore::CreateRootCertsBundle(const char* path) {
@@ -1278,11 +1267,11 @@ const char* DefaultSslRootStore::CreateRootCertsBundle(const char* path) {
 
     for (stdfs::directory_iterator iter{path} ; iter != end ; ++iter)
     {
-        if (stdfs::is_regular_file(*iter)) { // ignores subdirectories
-            std::ifstream ca_file(iter->path().string());
-	    bundle_ca_file << ca_file.rdbuf();
-	    ca_file.close();
-	}
+      if (stdfs::is_regular_file(*iter)) { // ignores subdirectories
+        std::ifstream ca_file(iter->path().string());
+  	    bundle_ca_file << ca_file.rdbuf();
+  	    ca_file.close();
+    	}
     }
 
     bundle_ca_file.close();
