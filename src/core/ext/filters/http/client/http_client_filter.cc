@@ -23,6 +23,7 @@
 #include <stdint.h>
 #include <string.h>
 #include "src/core/ext/filters/http/client/http_client_filter.h"
+#include "src/core/lib/channel/channel_args.h"
 #include "src/core/lib/gpr/string.h"
 #include "src/core/lib/gprpp/manual_constructor.h"
 #include "src/core/lib/profiling/timers.h"
@@ -55,8 +56,8 @@ struct call_data {
   grpc_closure recv_initial_metadata_ready;
   // State for handling recv_trailing_metadata ops.
   grpc_metadata_batch* recv_trailing_metadata;
-  grpc_closure* original_recv_trailing_metadata_ready;
-  grpc_closure recv_trailing_metadata_ready;
+  grpc_closure* original_recv_trailing_metadata_on_complete;
+  grpc_closure recv_trailing_metadata_on_complete;
   // State for handling send_message ops.
   grpc_transport_stream_op_batch* send_message_batch;
   size_t send_message_bytes_read;
@@ -153,7 +154,8 @@ static void recv_initial_metadata_ready(void* user_data, grpc_error* error) {
   GRPC_CLOSURE_RUN(calld->original_recv_initial_metadata_ready, error);
 }
 
-static void recv_trailing_metadata_ready(void* user_data, grpc_error* error) {
+static void recv_trailing_metadata_on_complete(void* user_data,
+                                               grpc_error* error) {
   grpc_call_element* elem = static_cast<grpc_call_element*>(user_data);
   call_data* calld = static_cast<call_data*>(elem->call_data);
   if (error == GRPC_ERROR_NONE) {
@@ -162,7 +164,7 @@ static void recv_trailing_metadata_ready(void* user_data, grpc_error* error) {
   } else {
     GRPC_ERROR_REF(error);
   }
-  GRPC_CLOSURE_RUN(calld->original_recv_trailing_metadata_ready, error);
+  GRPC_CLOSURE_RUN(calld->original_recv_trailing_metadata_on_complete, error);
 }
 
 static void send_message_on_complete(void* arg, grpc_error* error) {
@@ -311,10 +313,8 @@ static void hc_start_transport_stream_op_batch(
     /* substitute our callback for the higher callback */
     calld->recv_trailing_metadata =
         batch->payload->recv_trailing_metadata.recv_trailing_metadata;
-    calld->original_recv_trailing_metadata_ready =
-        batch->payload->recv_trailing_metadata.recv_trailing_metadata_ready;
-    batch->payload->recv_trailing_metadata.recv_trailing_metadata_ready =
-        &calld->recv_trailing_metadata_ready;
+    calld->original_recv_trailing_metadata_on_complete = batch->on_complete;
+    batch->on_complete = &calld->recv_trailing_metadata_on_complete;
   }
 
   grpc_error* error = GRPC_ERROR_NONE;
@@ -421,8 +421,8 @@ static grpc_error* init_call_elem(grpc_call_element* elem,
   GRPC_CLOSURE_INIT(&calld->recv_initial_metadata_ready,
                     recv_initial_metadata_ready, elem,
                     grpc_schedule_on_exec_ctx);
-  GRPC_CLOSURE_INIT(&calld->recv_trailing_metadata_ready,
-                    recv_trailing_metadata_ready, elem,
+  GRPC_CLOSURE_INIT(&calld->recv_trailing_metadata_on_complete,
+                    recv_trailing_metadata_on_complete, elem,
                     grpc_schedule_on_exec_ctx);
   GRPC_CLOSURE_INIT(&calld->send_message_on_complete, send_message_on_complete,
                     elem, grpc_schedule_on_exec_ctx);
@@ -436,64 +436,43 @@ static void destroy_call_elem(grpc_call_element* elem,
                               const grpc_call_final_info* final_info,
                               grpc_closure* ignored) {}
 
-static grpc_mdelem scheme_from_args(const grpc_channel_args* args) {
-  unsigned i;
-  size_t j;
+static grpc_mdelem scheme_from_args(const grpc_channel_args* channel_args) {
   grpc_mdelem valid_schemes[] = {GRPC_MDELEM_SCHEME_HTTP,
                                  GRPC_MDELEM_SCHEME_HTTPS};
-  if (args != nullptr) {
-    for (i = 0; i < args->num_args; ++i) {
-      if (args->args[i].type == GRPC_ARG_STRING &&
-          strcmp(args->args[i].key, GRPC_ARG_HTTP2_SCHEME) == 0) {
-        for (j = 0; j < GPR_ARRAY_SIZE(valid_schemes); j++) {
-          if (0 == grpc_slice_str_cmp(GRPC_MDVALUE(valid_schemes[j]),
-                                      args->args[i].value.string)) {
-            return valid_schemes[j];
-          }
-        }
+  char* scheme =
+      grpc_channel_args_get_string(channel_args, GRPC_ARG_HTTP2_SCHEME);
+  if (scheme != nullptr) {
+    for (size_t i = 0; i < GPR_ARRAY_SIZE(valid_schemes); i++) {
+      if (0 == grpc_slice_str_cmp(GRPC_MDVALUE(valid_schemes[i]), scheme)) {
+        return valid_schemes[i];
       }
     }
   }
   return GRPC_MDELEM_SCHEME_HTTP;
 }
 
-static size_t max_payload_size_from_args(const grpc_channel_args* args) {
-  if (args != nullptr) {
-    for (size_t i = 0; i < args->num_args; ++i) {
-      if (0 == strcmp(args->args[i].key, GRPC_ARG_MAX_PAYLOAD_SIZE_FOR_GET)) {
-        if (args->args[i].type != GRPC_ARG_INTEGER) {
-          gpr_log(GPR_ERROR, "%s: must be an integer",
-                  GRPC_ARG_MAX_PAYLOAD_SIZE_FOR_GET);
-        } else {
-          return static_cast<size_t>(args->args[i].value.integer);
-        }
-      }
-    }
-  }
-  return kMaxPayloadSizeForGet;
+static size_t max_payload_size_from_args(
+    const grpc_channel_args* channel_args) {
+  return grpc_channel_args_get_integer(
+      channel_args, GRPC_ARG_MAX_PAYLOAD_SIZE_FOR_GET,
+      {kMaxPayloadSizeForGet, 0, kMaxPayloadSizeForGet});
 }
 
 static grpc_slice user_agent_from_args(const grpc_channel_args* args,
                                        const char* transport_name) {
   gpr_strvec v;
-  size_t i;
   int is_first = 1;
   char* tmp;
   grpc_slice result;
 
   gpr_strvec_init(&v);
 
-  for (i = 0; args && i < args->num_args; i++) {
-    if (0 == strcmp(args->args[i].key, GRPC_ARG_PRIMARY_USER_AGENT_STRING)) {
-      if (args->args[i].type != GRPC_ARG_STRING) {
-        gpr_log(GPR_ERROR, "Channel argument '%s' should be a string",
-                GRPC_ARG_PRIMARY_USER_AGENT_STRING);
-      } else {
-        if (!is_first) gpr_strvec_add(&v, gpr_strdup(" "));
-        is_first = 0;
-        gpr_strvec_add(&v, gpr_strdup(args->args[i].value.string));
-      }
-    }
+  char* user_agent_str =
+      grpc_channel_args_get_string(args, GRPC_ARG_PRIMARY_USER_AGENT_STRING);
+  if (user_agent_str != nullptr) {
+    if (!is_first) gpr_strvec_add(&v, gpr_strdup(" "));
+    is_first = 0;
+    gpr_strvec_add(&v, gpr_strdup(user_agent_str));
   }
 
   gpr_asprintf(&tmp, "%sgrpc-c/%s (%s; %s; %s)", is_first ? "" : " ",
@@ -502,17 +481,11 @@ static grpc_slice user_agent_from_args(const grpc_channel_args* args,
   is_first = 0;
   gpr_strvec_add(&v, tmp);
 
-  for (i = 0; args && i < args->num_args; i++) {
-    if (0 == strcmp(args->args[i].key, GRPC_ARG_SECONDARY_USER_AGENT_STRING)) {
-      if (args->args[i].type != GRPC_ARG_STRING) {
-        gpr_log(GPR_ERROR, "Channel argument '%s' should be a string",
-                GRPC_ARG_SECONDARY_USER_AGENT_STRING);
-      } else {
-        if (!is_first) gpr_strvec_add(&v, gpr_strdup(" "));
-        is_first = 0;
-        gpr_strvec_add(&v, gpr_strdup(args->args[i].value.string));
-      }
-    }
+  user_agent_str =
+      grpc_channel_args_get_string(args, GRPC_ARG_SECONDARY_USER_AGENT_STRING);
+  if (user_agent_str != nullptr) {
+    gpr_strvec_add(&v, gpr_strdup(" "));
+    gpr_strvec_add(&v, gpr_strdup(user_agent_str));
   }
 
   tmp = gpr_strvec_flatten(&v, nullptr);
