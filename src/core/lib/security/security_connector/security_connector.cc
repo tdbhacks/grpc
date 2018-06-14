@@ -1258,6 +1258,7 @@ const char* DefaultSslRootStore::GetSystemRootCerts() {
 }
 
 const char* DefaultSslRootStore::CreateRootCertsBundle(const char* path) {
+  const char* result = nullptr;
   const char* bundle_path = "../../../etc/system_roots.pem";
   FILE* bundle_ca_file = fopen(bundle_path, "w");
   FILE* cert_file;
@@ -1266,12 +1267,12 @@ const char* DefaultSslRootStore::CreateRootCertsBundle(const char* path) {
   void* buffer = 0;
   long length;
 
-  if (ca_directory != nullptr) {
+  if (ca_directory != nullptr && bundle_ca_file != nullptr) {
     while ((directory_entry = readdir(ca_directory)) != nullptr) {
-      // only work with files, not subdirectories
-      if (directory_entry->d_type == DT_DIR &&
-          strcmp(directory_entry->d_name, ".") != 0 &&
-          strcmp(directory_entry->d_name, "..") != 0) {
+      // we only want the files, not subdirectories
+      if (directory_entry->d_type == DT_DIR ||
+          strcmp(directory_entry->d_name, ".") == 0 ||
+          strcmp(directory_entry->d_name, "..") == 0) {
         continue;
       }
       if ((cert_file = fopen(directory_entry->d_name, "rb")) != nullptr) {
@@ -1288,10 +1289,11 @@ const char* DefaultSslRootStore::CreateRootCertsBundle(const char* path) {
       }
     }
     closedir(ca_directory);
+    result = bundle_path;
   }
 
   fclose(bundle_ca_file);
-  return bundle_path;
+  return result;
 }
 
 void DefaultSslRootStore::DetectPlatform() {
