@@ -22,10 +22,8 @@
 
 #include <stdbool.h>
 #include <string.h>
-#include <dirent.h>
 
-#include <fstream>
-#include <experimental/filesystem>
+#include <dirent.h>
 
 #include <grpc/slice_buffer.h>
 #include <grpc/support/alloc.h>
@@ -1244,23 +1242,39 @@ const char* DefaultSslRootStore::GetSystemRootCerts() {
 }
 
 const char* DefaultSslRootStore::CreateRootCertsBundle(const char* path) {
-  namespace stdfs = std::experimental::filesystem;
-
   const char* bundle_path = "../../../etc/system_roots.pem";
-  std::ofstream bundle_ca_file(bundle_path);
+  FILE* bundle_ca_file = fopen(bundle_path, "w");
+  FILE* cert_file;
+  DIR* ca_directory = opendir(path);
+  struct dirent* directory_entry;
+  void* buffer = 0;
+  long length;
 
-  //http://en.cppreference.com/w/cpp/experimental/fs/directory_iterator (unspecified order)
-  const stdfs::directory_iterator end{};
-
-  for (stdfs::directory_iterator iter{path}; iter != end; ++iter) {
-    if (stdfs::is_regular_file(*iter)) { // ignores subdirectories
-      std::ifstream ca_file(iter->path().string());
-	    bundle_ca_file << ca_file.rdbuf();
-	    ca_file.close();
+  if (ca_directory != nullptr) {
+    while ((directory_entry = readdir(ca_directory)) != nullptr) {
+      // only work with files, not subdirectories
+      if (directory_entry->d_type == DT_DIR &&
+          strcmp(directory_entry->d_name, ".") != 0 &&
+          strcmp(directory_entry->d_name, "..") != 0) {
+        continue;
+      }
+      if ((cert_file = fopen(directory_entry->d_name, "rb")) != nullptr) {
+        fseek(cert_file, 0, SEEK_END);
+        length = ftell(cert_file);
+        fseek(cert_file, 0, SEEK_SET);
+        buffer = malloc(length);
+        if (buffer) {
+          // to append the read file to the bundle file
+          fread(buffer, 1, length, cert_file);
+          fwrite(buffer, 1, length, bundle_ca_file);
+        }
+        fclose(cert_file);
+      }
     }
+    closedir(ca_directory);
   }
 
-  bundle_ca_file.close();
+  fclose(bundle_ca_file);
   return bundle_path;
 }
 
