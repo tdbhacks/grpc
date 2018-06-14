@@ -1262,14 +1262,14 @@ const char* DefaultSslRootStore::GetSystemRootCerts() {
 const char* DefaultSslRootStore::CreateRootCertsBundle(const char* path) {
     namespace stdfs = std::experimental::filesystem;
 
-    const char* bundle_path = "system_roots.pem"; //TODO where should we save the bundle file? "/etc"?
+    // TODO where should we save the bundle file? "/etc"?
+    const char* bundle_path = "system_roots.pem";
     std::ofstream bundle_ca_file(bundle_path);
 
     // http://en.cppreference.com/w/cpp/experimental/fs/directory_iterator (unspecified order)
     const stdfs::directory_iterator end{};
 
-    for (stdfs::directory_iterator iter{path} ; iter != end ; ++iter)
-    {
+    for (stdfs::directory_iterator iter{path}; iter != end; ++iter) {
       if (stdfs::is_regular_file(*iter)) { // ignores subdirectories
         std::ifstream ca_file(iter->path().string());
   	    bundle_ca_file << ca_file.rdbuf();
