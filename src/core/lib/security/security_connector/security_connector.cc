@@ -1192,19 +1192,19 @@ grpc_slice DefaultSslRootStore::ComputePemRootCerts() {
   // Use system certs if needed.
   if (GRPC_SLICE_IS_EMPTY(result) &&
       ovrd_res != GRPC_SSL_ROOTS_OVERRIDE_FAIL_PERMANENTLY) {
-      const char* system_root_certs = nullptr;
-      if (use_system_certs != nullptr) {
-          system_root_certs = GetSystemRootCerts();
-          if (system_root_certs != nullptr) {
-              GRPC_LOG_IF_ERROR("load_file",
-                          grpc_load_file(system_root_certs, 1, &result));
-          }
-      }
-      if (use_system_certs == nullptr || system_root_certs == nullptr) {
-          // Fallback to certs manually shipped with gRPC
+    const char* system_root_certs = nullptr;
+    if (use_system_certs != nullptr) {
+      system_root_certs = GetSystemRootCerts();
+      if (system_root_certs != nullptr) {
           GRPC_LOG_IF_ERROR("load_file",
-                    grpc_load_file(installed_roots_path, 1, &result));
+                            grpc_load_file(system_root_certs, 1, &result));
       }
+    }
+    if (use_system_certs == nullptr || system_root_certs == nullptr) {
+      // Fallback to certs manually shipped with gRPC
+      GRPC_LOG_IF_ERROR("load_file",
+                        grpc_load_file(installed_roots_path, 1, &result));
+    }
   }
   return result;
 }
@@ -1215,11 +1215,11 @@ const char* DefaultSslRootStore::GetSystemRootCerts() {
     //TODO case in which there's no bundle, just single cert files
     FILE* cert_file;
     for (size_t i = 0; i < num_cert_files_; i++) {
-        cert_file = fopen(linux_cert_files_[i], "r");
-        if (cert_file != nullptr) {
-          fclose(cert_file);
-          result = linux_cert_files_[i];
-        }
+      cert_file = fopen(linux_cert_files_[i], "r");
+      if (cert_file != nullptr) {
+        fclose(cert_file);
+        result = linux_cert_files_[i];
+      }
     }
     if (result == nullptr) { // If no cert file was found try directories
      	DIR* cert_dir;
@@ -1244,37 +1244,36 @@ const char* DefaultSslRootStore::GetSystemRootCerts() {
 }
 
 const char* DefaultSslRootStore::CreateRootCertsBundle(const char* path) {
-    namespace stdfs = std::experimental::filesystem;
+  namespace stdfs = std::experimental::filesystem;
 
-    // TODO where should we save the bundle file? "/etc"?
-    const char* bundle_path = "system_roots.pem";
-    std::ofstream bundle_ca_file(bundle_path);
+  const char* bundle_path = "../../../etc/system_roots.pem";
+  std::ofstream bundle_ca_file(bundle_path);
 
-    // http://en.cppreference.com/w/cpp/experimental/fs/directory_iterator (unspecified order)
-    const stdfs::directory_iterator end{};
+  //http://en.cppreference.com/w/cpp/experimental/fs/directory_iterator (unspecified order)
+  const stdfs::directory_iterator end{};
 
-    for (stdfs::directory_iterator iter{path}; iter != end; ++iter) {
-      if (stdfs::is_regular_file(*iter)) { // ignores subdirectories
-        std::ifstream ca_file(iter->path().string());
-  	    bundle_ca_file << ca_file.rdbuf();
-  	    ca_file.close();
-    	}
+  for (stdfs::directory_iterator iter{path}; iter != end; ++iter) {
+    if (stdfs::is_regular_file(*iter)) { // ignores subdirectories
+      std::ifstream ca_file(iter->path().string());
+	    bundle_ca_file << ca_file.rdbuf();
+	    ca_file.close();
     }
+  }
 
-    bundle_ca_file.close();
-    return bundle_path;
+  bundle_ca_file.close();
+  return bundle_path;
 }
 
 void DefaultSslRootStore::DetectPlatform() {
 #if defined __linux__
-     // Linux environment (any GNU/Linux distribution)
-     SetPlatform("linux");
+  // Linux environment (any GNU/Linux distribution)
+  SetPlatform("linux");
 #elif defined _WIN32
-     // Windows environment (32 and 64 bit)
-     SetPlatform("windows");
+  // Windows environment (32 and 64 bit)
+  SetPlatform("windows");
 #elif defined __APPLE__ && __MACH__
-     // MacOS / OSX environment
-     SetPlatform("apple");
+  // MacOS / OSX environment
+  SetPlatform("apple");
 #endif
 }
 
