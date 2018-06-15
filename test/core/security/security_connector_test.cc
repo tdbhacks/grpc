@@ -384,6 +384,10 @@ class TestDefaultSslRootStore : public DefaultSslRootStore {
   static void DetectPlatformForTesting() {
     DetectPlatform();
   }
+
+  static const char* GetSystemRootsFlagForTesting() {
+    return GetSystemRootsFlag();
+  }
 };
 
 }  // namespace
@@ -457,8 +461,8 @@ static void test_system_ssl_roots() {
       grpc_core::TestDefaultSslRootStore::GetSystemRootCertsForTesting();
   GPR_ASSERT(path == nullptr);
 
-  /* Test that the DetectPlatform function correctly detects the operating
-     system */
+  /* Test that the DetectPlatform function correctly detects Linux, Windows,
+     and OSX/MacOS */
   grpc_core::TestDefaultSslRootStore::DetectPlatformForTesting();
   platform = grpc_core::TestDefaultSslRootStore::GetPlatformForTesting();
 #if defined __linux__
@@ -470,8 +474,6 @@ static void test_system_ssl_roots() {
 #elif defined __APPLE__ && __MACH__
   // MacOS / OSX environment
   GPR_ASSERT(strcmp(platform, "apple") == 0);
-#else
-  GPR_ERROR("OS is not linux, windows, or apple");
 #endif
 }
 
@@ -486,7 +488,10 @@ int main(int argc, char** argv) {
   test_cn_and_multiple_sans_and_others_ssl_peer_to_auth_context();
   test_ipv6_address_san();
   test_default_ssl_roots();
-  test_system_ssl_roots();
+
+  if (grpc_core::TestDefaultSslRootStore::GetSystemRootsFlagForTesting()) {
+    test_system_ssl_roots();
+  }
 
   grpc_shutdown();
   return 0;

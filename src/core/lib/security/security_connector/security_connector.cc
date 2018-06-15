@@ -59,12 +59,10 @@ static const char* installed_roots_path =
     INSTALL_PREFIX "/share/grpc/roots.pem";
 #endif
 
+/* --- Flag to enable/disable system root certificates feature --- */
 #ifndef GRPC_SYSTEM_SSL_ROOTS_FLAG
 #define GRPC_SYSTEM_SSL_ROOTS_FLAG "GRPC_SYSTEM_SSL_ROOTS_FLAG"
 #endif
-
-/* -- System certs identification -- */
-char* use_system_certs = gpr_getenv(GRPC_SYSTEM_SSL_ROOTS_FLAG);
 
 /* -- Overridden default roots. -- */
 
@@ -1166,6 +1164,8 @@ const char* DefaultSslRootStore::linux_cert_directories_[] = {
 size_t DefaultSslRootStore::num_cert_files_ = 5;
 size_t DefaultSslRootStore::num_cert_dirs_ = 5;
 const char* DefaultSslRootStore::platform;
+const char* DefaultSslRootStore::use_system_certs = gpr_getenv(
+    GRPC_SYSTEM_SSL_ROOTS_FLAG);
 
 const tsi_ssl_root_certs_store* DefaultSslRootStore::GetRootStore() {
   InitRootStore();
@@ -1203,10 +1203,10 @@ grpc_slice DefaultSslRootStore::ComputePemRootCerts() {
     }
     gpr_free(pem_root_certs);
   }
-  // Use system certs if needed.
   if (GRPC_SLICE_IS_EMPTY(result) &&
       ovrd_res != GRPC_SSL_ROOTS_OVERRIDE_FAIL_PERMANENTLY) {
     const char* system_root_certs = nullptr;
+    // Use system certs if flag is enabled.
     if (use_system_certs != nullptr) {
       system_root_certs = GetSystemRootCerts();
       if (system_root_certs != nullptr) {

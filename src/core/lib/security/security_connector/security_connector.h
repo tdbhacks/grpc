@@ -280,7 +280,7 @@ class DefaultSslRootStore {
   // Required for GetSystemRootCerts() tests
   static void SetPlatform(const char* pform) { platform = pform; }
   static const char* GetPlatform() { return platform; }
-
+  static const char* GetSystemRootsFlag() { return use_system_certs; }
 
  private:
   // Construct me not!
@@ -302,6 +302,9 @@ class DefaultSslRootStore {
   static const char* linux_cert_files_[];
   static const char* linux_cert_directories_[];
   static size_t num_cert_files_, num_cert_dirs_;
+
+  // Flag to enable/disable system root certificates feature
+  static const char* use_system_certs;
 
   // Variable to hold the name of the os
   static const char* platform;
