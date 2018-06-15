@@ -1236,17 +1236,17 @@ const char* DefaultSslRootStore::GetSystemRootCerts() {
       }
     }
     if (result == nullptr) { // If no cert file was found try directories
-     	DIR* cert_dir;
-    	const char* found_cert_dir = nullptr;
-     	for (size_t i = 0; i < num_cert_dirs_; i++) {
-   	    cert_dir = opendir(linux_cert_directories_[i]);
-   	    if (cert_dir != nullptr) { // If directory exists
-      		found_cert_dir = linux_cert_directories_[i];
-       		closedir(cert_dir);
-   	    }
-     	}
-    	if (cert_dir != nullptr && found_cert_dir != nullptr) {
-  	    result = CreateRootCertsBundle(found_cert_dir);
+      DIR* cert_dir;
+      const char* found_cert_dir = nullptr;
+      for (size_t i = 0; i < num_cert_dirs_; i++) {
+        cert_dir = opendir(linux_cert_directories_[i]);
+        if (cert_dir != nullptr) { // If directory exists
+          found_cert_dir = linux_cert_directories_[i];
+          closedir(cert_dir);
+        }
+      }
+      if (cert_dir != nullptr && found_cert_dir != nullptr) {
+        result = CreateRootCertsBundle(found_cert_dir);
       }
     }
   } /*else if (platform.compare("windows")) {
