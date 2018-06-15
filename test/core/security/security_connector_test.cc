@@ -388,6 +388,10 @@ class TestDefaultSslRootStore : public DefaultSslRootStore {
   static const char* GetSystemRootsFlagForTesting() {
     return GetSystemRootsFlag();
   }
+
+  static grpc_slice CreateRootCertsBundleForTesting() {
+    return CreateRootCertsBundle();
+  }
 };
 
 }  // namespace
@@ -475,6 +479,32 @@ static void test_system_ssl_roots() {
   // MacOS / OSX environment
   GPR_ASSERT(strcmp(platform, "apple") == 0);
 #endif
+
+#if defined __linux__
+  /* Test that CreateRootCertsBundle returns a value on linux systems */
+  grpc_slice empty_slice = grpc_empty_slice();
+  grpc_slice result =
+      grpc_core::TestDefaultSslRootStore::CreateRootCertsBundleForTesting();
+  GPR_ASSERT(GRPC_SLICE_IS_EMPTY(result));
+
+#endif
+
+  /* Test that CreateRootCertsBundle returns an empty slice for any system other
+     than linux */
+  grpc_core::TestDefaultSslRootStore::SetPlatformForTesting("windows");
+  result =
+      grpc_core::TestDefaultSslRootStore::CreateRootCertsBundleForTesting();
+  GPR_ASSERT(GRPC_SLICE_IS_EMPTY(result));
+
+  grpc_core::TestDefaultSslRootStore::SetPlatformForTesting("apple");
+  result =
+      grpc_core::TestDefaultSslRootStore::CreateRootCertsBundleForTesting();
+  GPR_ASSERT(GRPC_SLICE_IS_EMPTY(result));
+  
+  grpc_core::TestDefaultSslRootStore::SetPlatformForTesting("invalid");
+  result =
+      grpc_core::TestDefaultSslRootStore::CreateRootCertsBundleForTesting();
+  GPR_ASSERT(GRPC_SLICE_IS_EMPTY(result));
 }
 
 int main(int argc, char** argv) {
