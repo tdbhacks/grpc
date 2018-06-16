@@ -22,9 +22,9 @@
 
 #include <stdbool.h>
 #include <string.h>
-
 #include <dirent.h>
 
+#include <grpcpp/impl/codegen/slice.h>
 #include <grpc/slice_buffer.h>
 #include <grpc/support/alloc.h>
 #include <grpc/support/log.h>
@@ -1210,8 +1210,10 @@ grpc_slice DefaultSslRootStore::ComputePemRootCerts() {
     if (use_system_certs != nullptr) {
       system_root_certs = GetSystemRootCerts();
       if (system_root_certs != nullptr) {
-          GRPC_LOG_IF_ERROR("load_file",
-                            grpc_load_file(system_root_certs, 1, &result));
+        GRPC_LOG_IF_ERROR("load_file",
+                          grpc_load_file(system_root_certs, 1, &result));
+      } else if (strcmp(platform, "linux") == 0) {
+        result = CreateRootCertsBundle();
       }
     }
     if (use_system_certs == nullptr || system_root_certs == nullptr) {
@@ -1225,28 +1227,13 @@ grpc_slice DefaultSslRootStore::ComputePemRootCerts() {
 
 const char* DefaultSslRootStore::GetSystemRootCerts() {
   const char* result = nullptr;
-	if (strcmp(platform, "linux") == 0) {
-    //TODO case in which there's no bundle, just single cert files
+  if (strcmp(platform, "linux") == 0) {
     FILE* cert_file;
     for (size_t i = 0; i < num_cert_files_; i++) {
       cert_file = fopen(linux_cert_files_[i], "r");
       if (cert_file != nullptr) {
         fclose(cert_file);
         result = linux_cert_files_[i];
-      }
-    }
-    if (result == nullptr) { // If no cert file was found try directories
-      DIR* cert_dir;
-      const char* found_cert_dir = nullptr;
-      for (size_t i = 0; i < num_cert_dirs_; i++) {
-        cert_dir = opendir(linux_cert_directories_[i]);
-        if (cert_dir != nullptr) { // If directory exists
-          found_cert_dir = linux_cert_directories_[i];
-          closedir(cert_dir);
-        }
-      }
-      if (cert_dir != nullptr && found_cert_dir != nullptr) {
-        result = CreateRootCertsBundle(found_cert_dir);
       }
     }
   } /*else if (platform.compare("windows")) {
@@ -1257,43 +1244,47 @@ const char* DefaultSslRootStore::GetSystemRootCerts() {
   return result;
 }
 
-const char* DefaultSslRootStore::CreateRootCertsBundle(const char* path) {
-  const char* result = nullptr;
-  const char* bundle_path = "../../../etc/system_roots.pem";
-  FILE* bundle_ca_file = fopen(bundle_path, "w");
-  FILE* cert_file;
-  DIR* ca_directory = opendir(path);
-  struct dirent* directory_entry;
-  void* buffer = 0;
-  long length;
+grpc_slice DefaultSslRootStore::CreateRootCertsBundle() {
+  grpc_slice bundle_slice = grpc_empty_slice();
 
-  if (ca_directory != nullptr && bundle_ca_file != nullptr) {
-    while ((directory_entry = readdir(ca_directory)) != nullptr) {
-      // we only want the files, not subdirectories
-      if (directory_entry->d_type == DT_DIR ||
-          strcmp(directory_entry->d_name, ".") == 0 ||
-          strcmp(directory_entry->d_name, "..") == 0) {
-        continue;
-      }
-      if ((cert_file = fopen(directory_entry->d_name, "rb")) != nullptr) {
-        fseek(cert_file, 0, SEEK_END);
-        length = ftell(cert_file);
-        fseek(cert_file, 0, SEEK_SET);
-        buffer = malloc(length);
-        if (buffer) {
-          // to append the read file to the bundle file
-          fread(buffer, 1, length, cert_file);
-          fwrite(buffer, 1, length, bundle_ca_file);
-        }
-        fclose(cert_file);
-      }
+  DIR* cert_dir;
+  const char* found_cert_dir = nullptr;
+  for (size_t i = 0; i < num_cert_dirs_; i++) {
+    cert_dir = opendir(linux_cert_directories_[i]);
+    if (cert_dir != nullptr) { // If directory exists
+      found_cert_dir = linux_cert_directories_[i];
+      closedir(cert_dir);
     }
-    closedir(ca_directory);
-    result = bundle_path;
   }
 
-  fclose(bundle_ca_file);
-  return result;
+  if (cert_dir != nullptr && found_cert_dir != nullptr) {
+    FILE* cert_file;
+    DIR* ca_directory = opendir(found_cert_dir);
+    struct dirent* directory_entry;
+    grpc::string bundle_string;
+    grpc_slice single_cert_slice = grpc_empty_slice();
+
+    if (ca_directory != nullptr) {
+      while ((directory_entry = readdir(ca_directory)) != nullptr) {
+        // we only want the files, not subdirectories
+        if (directory_entry->d_type == DT_DIR ||
+            strcmp(directory_entry->d_name, ".") == 0 ||
+            strcmp(directory_entry->d_name, "..") == 0) {
+          continue;
+        }
+        if ((cert_file = fopen(directory_entry->d_name, "rb")) != nullptr) {
+          GRPC_LOG_IF_ERROR("load_file",
+                        grpc_load_file(directory_entry->d_name, 1, &single_cert_slice)); //Add null terminator? (1)
+          bundle_string += grpc::string(reinterpret_cast<char*>(GRPC_SLICE_START_PTR(single_cert_slice)),
+                      GRPC_SLICE_LENGTH(single_cert_slice));
+          fclose(cert_file);
+        }
+      }
+      closedir(ca_directory);
+      bundle_slice = grpc_slice_from_copied_buffer(bundle_string.c_str(), strlen(bundle_string.c_str()) + 1);
+    }
+  }
+  return bundle_slice;
 }
 
 void DefaultSslRootStore::DetectPlatform() {

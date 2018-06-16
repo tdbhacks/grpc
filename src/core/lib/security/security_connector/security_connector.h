@@ -274,7 +274,7 @@ class DefaultSslRootStore {
   // Creates a bundle file from all the existing system certificates.
   // Returns the path to the bundle file.
   // This function is also protected so that it can be tested.
-  static const char* CreateRootCertsBundle(const char* path);
+  static grpc_slice CreateRootCertsBundle();
 
   // Set and get the platform variable
   // Required for GetSystemRootCerts() tests
