@@ -24,7 +24,6 @@
 #include <string.h>
 #include <dirent.h>
 
-#include <grpcpp/impl/codegen/slice.h>
 #include <grpc/slice_buffer.h>
 #include <grpc/support/alloc.h>
 #include <grpc/support/log.h>
