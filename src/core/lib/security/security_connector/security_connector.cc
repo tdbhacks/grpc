@@ -63,6 +63,11 @@ static const char* installed_roots_path =
 #define GRPC_SYSTEM_SSL_ROOTS_FLAG "GRPC_SYSTEM_SSL_ROOTS_FLAG"
 #endif
 
+/* --- Flag to specify custom directory for system certs testing --- */
+#ifndef GRPC_SYSTEM_ROOTS_DIR
+#define GRPC_SYSTEM_ROOTS_DIR "GRPC_SYSTEM_ROOTS_DIR"
+#endif
+
 /* -- Overridden default roots. -- */
 
 static grpc_ssl_roots_override_callback ssl_roots_override_cb = nullptr;
@@ -1188,8 +1193,8 @@ const char* DefaultSslRootStore::linux_cert_directories_[] = {
 size_t DefaultSslRootStore::num_cert_files_ = 5;
 size_t DefaultSslRootStore::num_cert_dirs_ = 5;
 const char* DefaultSslRootStore::platform;
-const char* DefaultSslRootStore::use_system_certs = gpr_getenv(
-    GRPC_SYSTEM_SSL_ROOTS_FLAG);
+const char* DefaultSslRootStore::use_system_certs = gpr_getenv(GRPC_SYSTEM_SSL_ROOTS_FLAG);
+const char* DefaultSslRootStore::use_custom_system_roots_dir = gpr_getenv(GRPC_SYSTEM_ROOTS_DIR);
 
 const tsi_ssl_root_certs_store* DefaultSslRootStore::GetRootStore() {
   InitRootStore();
@@ -1231,7 +1236,7 @@ grpc_slice DefaultSslRootStore::ComputePemRootCerts() {
       ovrd_res != GRPC_SSL_ROOTS_OVERRIDE_FAIL_PERMANENTLY) {
     const char* system_root_certs = nullptr;
     // Use system certs if flag is enabled.
-    if (use_system_certs != nullptr) {
+    if (use_system_certs != nullptr && use_custom_system_roots_dir != nullptr) {
       system_root_certs = GetSystemRootCerts();
       if (system_root_certs != nullptr) {
         GRPC_LOG_IF_ERROR("load_file",
@@ -1239,8 +1244,10 @@ grpc_slice DefaultSslRootStore::ComputePemRootCerts() {
       } else if (strcmp(platform, "linux") == 0) {
         result = CreateRootCertsBundle();
       }
+    } else if (use_custom_system_roots_dir == nullptr) {
+	result = CreateRootCertsBundle();
     }
-    if (use_system_certs == nullptr || system_root_certs == nullptr) {
+    if (use_system_certs == nullptr || GRPC_SLICE_IS_EMPTY(result)) {
       // Fallback to certs manually shipped with gRPC
       GRPC_LOG_IF_ERROR("load_file",
                         grpc_load_file(installed_roots_path, 1, &result));

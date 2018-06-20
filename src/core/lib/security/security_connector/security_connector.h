@@ -307,6 +307,9 @@ class DefaultSslRootStore {
   // Flag to enable/disable system root certificates feature
   static const char* use_system_certs;
 
+  // Flag to specify custom directory that contains the system root certs
+  static const char* use_custom_system_roots_dir;
+
   // Variable to hold the name of the os
   static const char* platform;
 };
