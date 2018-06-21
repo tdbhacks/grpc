@@ -1304,24 +1304,27 @@ grpc_slice DefaultSslRootStore::CreateRootCertsBundle() {
           continue;
         }
         if ((cert_file = fopen(directory_entry->d_name, "rb")) != nullptr) {
-          GRPC_LOG_IF_ERROR("load_file",
-                        grpc_load_file(directory_entry->d_name, 1, &single_cert_slice));
+          GRPC_LOG_IF_ERROR(
+              "load_file",
+              grpc_load_file(directory_entry->d_name, 1, &single_cert_slice));
           char* single_ca_string = grpc_slice_to_c_string(single_cert_slice);
-	  if (bundle_string != nullptr) {
-	    char* temp_string = static_cast<char*>(gpr_malloc(strlen(bundle_string) + strlen(single_ca_string) + 1));
-	    strcpy(temp_string,bundle_string);
-	    strcat(temp_string,single_ca_string);
-	    bundle_string = temp_string;
-	    gpr_free(temp_string);
-	  } else {
-	    bundle_string = single_ca_string;
-	  }
-	  gpr_free(single_ca_string);
+          if (bundle_string != nullptr) {
+            char* temp_string = static_cast<char*>(gpr_malloc(
+                strlen(bundle_string) + strlen(single_ca_string) + 1));
+            strcpy(temp_string,bundle_string);
+            strcat(temp_string,single_ca_string);
+            bundle_string = temp_string;
+            gpr_free(temp_string);
+          } else {
+            bundle_string = single_ca_string;
+          }
+          gpr_free(single_ca_string);
           fclose(cert_file);
         }
       }
       closedir(ca_directory);
-      bundle_slice = grpc_slice_from_copied_buffer(bundle_string, strlen(bundle_string) + 1);
+      bundle_slice = grpc_slice_from_copied_buffer(bundle_string,
+                                                   strlen(bundle_string) + 1);
     }
   }
   return bundle_slice;
