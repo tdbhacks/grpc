@@ -18,6 +18,7 @@
 
 #include <stdio.h>
 #include <string.h>
+#include <dirent.h>
 
 #include <grpc/grpc_security.h>
 #include <grpc/support/alloc.h>
@@ -448,12 +449,6 @@ static void test_default_ssl_roots(void) {
 }
 
 static void test_system_ssl_roots() {
-  /* Test that the SetPlatform function operates correctly */
-  grpc_core::TestDefaultSslRootStore::SetPlatformForTesting("value");
-  const char* platform =
-      grpc_core::TestDefaultSslRootStore::GetPlatformForTesting();
-  GPR_ASSERT(strcmp(platform, "value") == 0);
-
   /* Test that the GetSystemRootCerts function returns a nullptr when the
      platform variable doesn't match one of the options. */
   grpc_core::TestDefaultSslRootStore::SetPlatformForTesting("test");
@@ -464,7 +459,8 @@ static void test_system_ssl_roots() {
   /* Test that the DetectPlatform function correctly detects Linux, Windows,
      and OSX/MacOS */
   grpc_core::TestDefaultSslRootStore::DetectPlatformForTesting();
-  platform = grpc_core::TestDefaultSslRootStore::GetPlatformForTesting();
+  const char* platform =
+      grpc_core::TestDefaultSslRootStore::GetPlatformForTesting();
 #if defined __linux__
   // Linux environment (any GNU/Linux distribution)
   GPR_ASSERT(strcmp(platform, "linux") == 0);

@@ -1275,7 +1275,7 @@ const char* DefaultSslRootStore::GetSystemRootCerts() {
   return result;
 }
 
-const char* DefaultSslRootStore::LookForValidCertsDirectory() {
+const char* DefaultSslRootStore::FindValidCertsDirectory() {
   DIR* directory;
   for (size_t i = 0; i < num_cert_dirs_; i++) {
     directory = opendir(linux_cert_directories_[i]);
@@ -1289,7 +1289,7 @@ const char* DefaultSslRootStore::LookForValidCertsDirectory() {
 
 grpc_slice DefaultSslRootStore::CreateRootCertsBundle() {
   grpc_slice bundle_slice = grpc_empty_slice();
-  const char* found_cert_dir = LookForValidCertsDirectory();
+  const char* found_cert_dir = FindValidCertsDirectory();
 
   if (found_cert_dir != nullptr) {
     FILE* cert_file;
