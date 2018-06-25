@@ -1193,8 +1193,10 @@ const char* DefaultSslRootStore::linux_cert_directories_[] = {
 size_t DefaultSslRootStore::num_cert_files_ = 5;
 size_t DefaultSslRootStore::num_cert_dirs_ = 5;
 const char* DefaultSslRootStore::platform;
-const char* DefaultSslRootStore::use_system_certs = gpr_getenv(GRPC_SYSTEM_SSL_ROOTS_FLAG);
-const char* DefaultSslRootStore::use_custom_system_roots_dir = gpr_getenv(GRPC_SYSTEM_ROOTS_DIR);
+const char* DefaultSslRootStore::use_system_certs =
+    gpr_getenv(GRPC_SYSTEM_SSL_ROOTS_FLAG);
+const char* DefaultSslRootStore::use_custom_system_roots_dir =
+    gpr_getenv(GRPC_SYSTEM_ROOTS_DIR);
 
 const tsi_ssl_root_certs_store* DefaultSslRootStore::GetRootStore() {
   InitRootStore();
@@ -1277,6 +1279,10 @@ const char* DefaultSslRootStore::GetSystemRootCerts() {
 
 const char* DefaultSslRootStore::FindValidCertsDirectory() {
   DIR* directory;
+  char* custom_dir = nullptr;
+  if ((custom_dir = gpr_getenv(GRPC_SYSTEM_ROOTS_DIR)) != nullptr) {
+    return custom_dir;
+  }
   for (size_t i = 0; i < num_cert_dirs_; i++) {
     directory = opendir(linux_cert_directories_[i]);
     if (directory != nullptr) { // If directory exists
@@ -1299,6 +1305,7 @@ grpc_slice DefaultSslRootStore::CreateRootCertsBundle() {
     grpc_slice single_cert_slice = grpc_empty_slice();
 
     if (ca_directory != nullptr) {
+      char* file_path = nullptr;
       while ((directory_entry = readdir(ca_directory)) != nullptr) {
         // we only want the files, not subdirectories
         if (directory_entry->d_type == DT_DIR ||
@@ -1306,28 +1313,43 @@ grpc_slice DefaultSslRootStore::CreateRootCertsBundle() {
             strcmp(directory_entry->d_name, "..") == 0) {
           continue;
         }
-        if ((cert_file = fopen(directory_entry->d_name, "rb")) != nullptr) {
+        file_path = static_cast<char*>(gpr_malloc(
+            strlen(found_cert_dir) + strlen(directory_entry->d_name) + 2));
+        strncpy(file_path, found_cert_dir, strlen(found_cert_dir) + 2);
+        strcat(file_path, "/");
+        strcat(file_path, directory_entry->d_name);
+        strcat(file_path, "\0");
+        cert_file = fopen(file_path, "rw");
+        if (cert_file != nullptr) {
           GRPC_LOG_IF_ERROR(
               "load_file",
-              grpc_load_file(directory_entry->d_name, 1, &single_cert_slice));
-          char* single_ca_string = grpc_slice_to_c_string(single_cert_slice);
+              grpc_load_file(file_path, 0, &single_cert_slice));
+          char* single_cert_string = grpc_slice_to_c_string(single_cert_slice);
           if (bundle_string != nullptr) {
             char* temp_string = static_cast<char*>(gpr_malloc(
-                strlen(bundle_string) + strlen(single_ca_string) + 1));
-            strcpy(temp_string,bundle_string);
-            strcat(temp_string,single_ca_string);
-            bundle_string = temp_string;
+                strlen(bundle_string) + strlen(single_cert_string)));
+            strncpy(temp_string, bundle_string, strlen(bundle_string));
+            strcat(temp_string, single_cert_string);
+            bundle_string = static_cast<char*>(gpr_malloc(
+                strlen(temp_string)));
+            strncpy(bundle_string, temp_string, strlen(temp_string));
             gpr_free(temp_string);
           } else {
-            bundle_string = single_ca_string;
+            bundle_string = static_cast<char*>(gpr_malloc(
+                strlen(single_cert_string) + 1));
+            strncpy(bundle_string, single_cert_string,
+                    strlen(single_cert_string) + 1);
           }
-          gpr_free(single_ca_string);
+          gpr_free(single_cert_string);
           fclose(cert_file);
+        } else {
+          return grpc_empty_slice();
         }
       }
       closedir(ca_directory);
+      strcat(bundle_string, "\0");
       bundle_slice = grpc_slice_from_copied_buffer(bundle_string,
-                                                   strlen(bundle_string) + 1);
+                                                   strlen(bundle_string));
     }
   }
   return bundle_slice;

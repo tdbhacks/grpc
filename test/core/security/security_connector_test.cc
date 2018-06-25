@@ -485,7 +485,8 @@ static void test_system_ssl_roots() {
   // result should have the same content as roots_bundle
   grpc_slice result =
       grpc_core::TestDefaultSslRootStore::CreateRootCertsBundleForTesting();
-  GPR_ASSERT(grpc_slice_is_equivalent(roots_bundle, result) == 0);
+  GPR_ASSERT(strcmp(grpc_slice_to_c_string(result),
+                    grpc_slice_to_c_string(roots_bundle)) == 0);
 }
 
 int main(int argc, char** argv) {
