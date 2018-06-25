@@ -34,6 +34,7 @@
 #include "src/core/tsi/ssl_transport_security.h"
 #include "src/core/tsi/transport_security.h"
 #include "test/core/util/test_config.h"
+#include "src/core/lib/iomgr/load_file.h"
 
 static int check_transport_security_type(const grpc_auth_context* ctx) {
   grpc_auth_property_iterator it = grpc_auth_context_find_properties_by_name(
@@ -389,6 +390,10 @@ class TestDefaultSslRootStore : public DefaultSslRootStore {
   static const char* GetSystemRootsFlagForTesting() {
     return GetSystemRootsFlag();
   }
+
+  static grpc_slice CreateRootCertsBundleForTesting() {
+    return CreateRootCertsBundle();
+  }
 };
 
 }  // namespace
@@ -452,9 +457,9 @@ static void test_system_ssl_roots() {
   /* Test that the GetSystemRootCerts function returns a nullptr when the
      platform variable doesn't match one of the options. */
   grpc_core::TestDefaultSslRootStore::SetPlatformForTesting("test");
-  const char* path =
+  const char* cert_path =
       grpc_core::TestDefaultSslRootStore::GetSystemRootCertsForTesting();
-  GPR_ASSERT(path == nullptr);
+  GPR_ASSERT(cert_path == nullptr);
 
   /* Test that the DetectPlatform function correctly detects Linux, Windows,
      and OSX/MacOS */
@@ -471,6 +476,16 @@ static void test_system_ssl_roots() {
   // MacOS / OSX environment
   GPR_ASSERT(strcmp(platform, "apple") == 0);
 #endif
+
+  grpc_slice roots_bundle = grpc_empty_slice();
+  GRPC_LOG_IF_ERROR("load_file",
+                    grpc_load_file("test/core/security/etc/bundle/bundle.pem",
+                                   1, &roots_bundle));
+  gpr_setenv("GRPC_SYSTEM_ROOTS_DIR", "test/core/security/etc/roots");
+  // result should have the same content as roots_bundle
+  grpc_slice result =
+      grpc_core::TestDefaultSslRootStore::CreateRootCertsBundleForTesting();
+  GPR_ASSERT(grpc_slice_is_equivalent(roots_bundle, result) == 0);
 }
 
 int main(int argc, char** argv) {
