@@ -49,7 +49,7 @@ class SecureChannelFixture : public ChannelDestroyerFixture {
     //TODO: is this using our new feature implementation?
     //      This function seems to be unrelated to security_connector.
     grpc_channel_credentials* channel_creds = grpc_ssl_credentials_create(
-				"root_ca.pem", nullptr, nullptr, nullptr);
+				"../../../etc/roots.pem", nullptr, nullptr, nullptr);
     channel_ = grpc_secure_channel_create(channel_creds, "localhost:1234",
 						nullptr, nullptr);
   }
