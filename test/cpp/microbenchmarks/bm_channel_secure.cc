@@ -20,6 +20,7 @@
 
 #include <grpc/grpc_security.h>
 #include "src/core/lib/security/credentials/ssl/ssl_credentials.h"
+//#include "src/core/lib/security/credentials/ssl/ssl_credentials.cc"
 
 #include <benchmark/benchmark.h>
 #include <grpc/grpc.h>
@@ -46,12 +47,22 @@ class SecureChannelFixture : public ChannelDestroyerFixture {
  public:
   SecureChannelFixture() {}
   void Init() override {
-    //TODO: is this using our new feature implementation?
-    //      This function seems to be unrelated to security_connector.
     grpc_channel_credentials* channel_creds = grpc_ssl_credentials_create(
-				"../../../etc/roots.pem", nullptr, nullptr, nullptr);
+			 nullptr, nullptr, nullptr, nullptr);
+
     channel_ = grpc_secure_channel_create(channel_creds, "localhost:1234",
 						nullptr, nullptr);
+
+    /* CAUSES SEGFAULT ERROR IN CHANNEL_ARGS.CC
+    grpc_channel_security_connector* channel_sc =
+	grpc_fake_channel_security_connector_create(channel_creds, nullptr,
+		"localhost:1234", nullptr);
+
+    auto status = ssl_create_security_connector(channel_creds, nullptr,
+		"localhost:1234", nullptr, &channel_sc, nullptr);
+    (void)status;*/
+
+    grpc_channel_check_connectivity_state(channel_, 1);
   }
 };
 

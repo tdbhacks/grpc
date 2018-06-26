@@ -1246,11 +1246,12 @@ grpc_slice DefaultSslRootStore::ComputePemRootCerts() {
       } else if (strcmp(platform, "linux") == 0) {
         result = CreateRootCertsBundle();
       }
-    } else if (use_custom_system_roots_dir == nullptr) {
+    } else if (use_custom_system_roots_dir != nullptr) {
 	result = CreateRootCertsBundle();
     }
     if (use_system_certs == nullptr || GRPC_SLICE_IS_EMPTY(result)) {
       // Fallback to certs manually shipped with gRPC
+printf("executing feature");
       GRPC_LOG_IF_ERROR("load_file",
                         grpc_load_file(installed_roots_path, 1, &result));
     }
