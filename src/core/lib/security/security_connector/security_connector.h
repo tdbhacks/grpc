@@ -280,7 +280,7 @@ class DefaultSslRootStore {
   // Looks for a valid directory to load certificates from.
   // Returns such path or nullptr otherwise.
   // Protected for testing.
-  static const char* LookForValidCertsDirectory();
+  static const char* FindValidCertsDirectory();
 
   // Set and get the platform variable
   // Required for GetSystemRootCerts() tests
