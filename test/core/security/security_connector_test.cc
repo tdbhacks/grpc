@@ -448,6 +448,8 @@ static void test_default_ssl_roots(void) {
       grpc_core::TestDefaultSslRootStore::GetRootStore();
   GPR_ASSERT(root_store == nullptr);
 
+  /* TODO: add tests for ComputePemRootCerts using system roots */
+
   /* Cleanup. */
   remove(roots_env_var_file_path);
   gpr_free(roots_env_var_file_path);
@@ -477,16 +479,19 @@ static void test_system_ssl_roots() {
   GPR_ASSERT(strcmp(platform, "apple") == 0);
 #endif
 
+  /* Test that CreateRootCertsBundle returns a correct slice */
   grpc_slice roots_bundle = grpc_empty_slice();
   GRPC_LOG_IF_ERROR("load_file",
                     grpc_load_file("test/core/security/etc/bundle/bundle.pem",
                                    1, &roots_bundle));
   gpr_setenv("GRPC_SYSTEM_ROOTS_DIR", "test/core/security/etc/roots");
-  // result should have the same content as roots_bundle
+  /* result should have the same content as roots_bundle */
   grpc_slice result =
       grpc_core::TestDefaultSslRootStore::CreateRootCertsBundleForTesting();
   GPR_ASSERT(strcmp(grpc_slice_to_c_string(result),
                     grpc_slice_to_c_string(roots_bundle)) == 0);
+
+  /* TODO: add more tests for CreateRootCertsBundle */
 }
 
 int main(int argc, char** argv) {

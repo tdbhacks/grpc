@@ -1293,57 +1293,54 @@ const char* DefaultSslRootStore::FindValidCertsDirectory() {
   return nullptr;
 }
 
+//TODO: refactor this function to be shorter and easier to read
 grpc_slice DefaultSslRootStore::CreateRootCertsBundle() {
   grpc_slice bundle_slice = grpc_empty_slice();
   const char* found_cert_dir = FindValidCertsDirectory();
-
   if (found_cert_dir != nullptr) {
     FILE* cert_file;
     DIR* ca_directory = opendir(found_cert_dir);
     struct dirent* directory_entry;
     char* bundle_string = nullptr;
     grpc_slice single_cert_slice = grpc_empty_slice();
-
     if (ca_directory != nullptr) {
       char* file_path = nullptr;
       while ((directory_entry = readdir(ca_directory)) != nullptr) {
-        // we only want the files, not subdirectories
         if (directory_entry->d_type == DT_DIR ||
             strcmp(directory_entry->d_name, ".") == 0 ||
-            strcmp(directory_entry->d_name, "..") == 0) {
+            strcmp(directory_entry->d_name, "..") == 0) { // no subdirectories
           continue;
         }
+        // Combine directory path with filename to get absolute path
         file_path = static_cast<char*>(gpr_malloc(
             strlen(found_cert_dir) + strlen(directory_entry->d_name) + 2));
-        strncpy(file_path, found_cert_dir, strlen(found_cert_dir) + 2);
+        strncpy(file_path, found_cert_dir, strlen(found_cert_dir) + 1);
         strcat(file_path, "/");
         strcat(file_path, directory_entry->d_name);
-        strcat(file_path, "\0");
         cert_file = fopen(file_path, "rw");
         if (cert_file != nullptr) {
           GRPC_LOG_IF_ERROR(
               "load_file",
-              grpc_load_file(file_path, 0, &single_cert_slice));
+              grpc_load_file(file_path, 1, &single_cert_slice));
           char* single_cert_string = grpc_slice_to_c_string(single_cert_slice);
-          if (bundle_string != nullptr) {
-            char* temp_string = static_cast<char*>(gpr_malloc(
-                strlen(bundle_string) + strlen(single_cert_string)));
-            strncpy(temp_string, bundle_string, strlen(bundle_string));
-            strcat(temp_string, single_cert_string);
-            bundle_string = static_cast<char*>(gpr_malloc(
-                strlen(temp_string)));
-            strncpy(bundle_string, temp_string, strlen(temp_string));
-            gpr_free(temp_string);
-          } else {
+          /* Copy first cert into bundle_string, then concatenate as more files
+             are read */
+          if (bundle_string == nullptr) {
             bundle_string = static_cast<char*>(gpr_malloc(
                 strlen(single_cert_string) + 1));
             strncpy(bundle_string, single_cert_string,
                     strlen(single_cert_string) + 1);
+          } else {
+            char* temp_string = static_cast<char*>(gpr_malloc(
+                strlen(bundle_string) + strlen(single_cert_string)));
+            strncpy(temp_string, bundle_string, strlen(bundle_string));
+            strcat(temp_string, single_cert_string);
+            bundle_string = static_cast<char*>(gpr_malloc(strlen(temp_string)));
+            strncpy(bundle_string, temp_string, strlen(temp_string));
+            gpr_free(temp_string);
           }
           gpr_free(single_cert_string);
           fclose(cert_file);
-        } else {
-          return grpc_empty_slice();
         }
       }
       closedir(ca_directory);
