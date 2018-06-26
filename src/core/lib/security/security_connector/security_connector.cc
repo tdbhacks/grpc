@@ -1251,7 +1251,6 @@ grpc_slice DefaultSslRootStore::ComputePemRootCerts() {
     }
     if (use_system_certs == nullptr || GRPC_SLICE_IS_EMPTY(result)) {
       // Fallback to certs manually shipped with gRPC
-printf("executing feature");
       GRPC_LOG_IF_ERROR("load_file",
                         grpc_load_file(installed_roots_path, 1, &result));
     }
