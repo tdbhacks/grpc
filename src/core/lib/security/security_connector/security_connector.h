@@ -291,7 +291,7 @@ class DefaultSslRootStore {
   // Handles bundle creation by concatenating single cert files.
   // Protected for testing.
   static void CopyOrConcatenateCertIntoBundle(char* &bundle,
-					char* current_cert_string);
+                                              char* current_cert_string);
 
   // Set and get the platform variable
   // Required for GetSystemRootCerts() tests

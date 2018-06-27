@@ -1294,8 +1294,8 @@ const char* DefaultSslRootStore::FindValidCertsDirectory() {
 }
 
 // Combine directory path with filename to get absolute path
-char* DefaultSslRootStore::GetAbsoluteCertFilePath(
-         const char* valid_cert_dir, char* file_entry_name) {
+char* DefaultSslRootStore::GetAbsoluteCertFilePath(const char* valid_cert_dir,
+                                                   char* file_entry_name) {
   char* absolute_path = static_cast<char*>(gpr_malloc(
       strlen(valid_cert_dir) + strlen(file_entry_name) + 2));
   strncpy(absolute_path, valid_cert_dir, strlen(valid_cert_dir) + 1);
@@ -1306,10 +1306,9 @@ char* DefaultSslRootStore::GetAbsoluteCertFilePath(
 
 // Copy first cert into bundle, then concatenate subsequent certs
 void DefaultSslRootStore::CopyOrConcatenateCertIntoBundle(char* &bundle,
-						char* current_cert_string) {
+    char* current_cert_string) { //TODO: make bundle param style-guide compliant
   if (bundle == nullptr) {
-    bundle = static_cast<char*>(gpr_malloc(
-                          strlen(current_cert_string) + 1));
+    bundle = static_cast<char*>(gpr_malloc(strlen(current_cert_string) + 1));
     strncpy(bundle, current_cert_string, strlen(current_cert_string) + 1);
   } else {
     char* temp_string = static_cast<char*>(gpr_malloc(
@@ -1322,7 +1321,6 @@ void DefaultSslRootStore::CopyOrConcatenateCertIntoBundle(char* &bundle,
   }
 }
 
-//TODO: refactor this function to be shorter and easier to read
 grpc_slice DefaultSslRootStore::CreateRootCertsBundle() {
   grpc_slice bundle_slice = grpc_empty_slice();
   const char* found_cert_dir = FindValidCertsDirectory();
@@ -1340,16 +1338,16 @@ grpc_slice DefaultSslRootStore::CreateRootCertsBundle() {
             strcmp(directory_entry->d_name, "..") == 0) { // no subdirectories
           continue;
         }
-	char* file_entry_name = directory_entry->d_name;
-	char* file_path = GetAbsoluteCertFilePath(found_cert_dir,
-							file_entry_name);
+        char* file_entry_name = directory_entry->d_name;
+        char* file_path = GetAbsoluteCertFilePath(found_cert_dir,
+            file_entry_name);
         cert_file = fopen(file_path, "rw");
         if (cert_file != nullptr) {
           GRPC_LOG_IF_ERROR(
               "load_file",
               grpc_load_file(file_path, 1, &single_cert_slice));
           char* single_cert_string = grpc_slice_to_c_string(single_cert_slice);
-	  CopyOrConcatenateCertIntoBundle(bundle_string, single_cert_string);
+          CopyOrConcatenateCertIntoBundle(bundle_string, single_cert_string);
           gpr_free(single_cert_string);
           fclose(cert_file);
         }
@@ -1358,7 +1356,7 @@ grpc_slice DefaultSslRootStore::CreateRootCertsBundle() {
       strcat(bundle_string, "\0");
       if (bundle_string != nullptr) {
         bundle_slice = grpc_slice_from_copied_buffer(bundle_string,
-                                                   strlen(bundle_string));
+                                                     strlen(bundle_string));
       }
     }
   }
