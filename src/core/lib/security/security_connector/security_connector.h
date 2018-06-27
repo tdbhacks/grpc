@@ -282,6 +282,17 @@ class DefaultSslRootStore {
   // Protected for testing.
   static const char* FindValidCertsDirectory();
 
+  // Gets the absolute file path needed to load a certificate file.
+  // Returns such path.
+  // Protected for testing.
+  static char* GetAbsoluteCertFilePath(const char* valid_cert_dir,
+						char* file_entry_name);
+
+  // Handles bundle creation by concatenating single cert files.
+  // Protected for testing.
+  static void CopyOrConcatenateCertIntoBundle(char* bundle,
+					char* current_cert_string);
+
   // Set and get the platform variable
   // Required for GetSystemRootCerts() tests
   static void SetPlatform(const char* pform) { platform = pform; }

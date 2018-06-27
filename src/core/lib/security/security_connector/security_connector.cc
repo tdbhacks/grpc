@@ -1247,7 +1247,7 @@ grpc_slice DefaultSslRootStore::ComputePemRootCerts() {
         result = CreateRootCertsBundle();
       }
     } else if (use_custom_system_roots_dir != nullptr) {
-	result = CreateRootCertsBundle();
+        result = CreateRootCertsBundle();
     }
     if (use_system_certs == nullptr || GRPC_SLICE_IS_EMPTY(result)) {
       // Fallback to certs manually shipped with gRPC
@@ -1293,60 +1293,73 @@ const char* DefaultSslRootStore::FindValidCertsDirectory() {
   return nullptr;
 }
 
+// Combine directory path with filename to get absolute path
+char* DefaultSslRootStore::GetAbsoluteCertFilePath(
+         const char* valid_cert_dir, char* file_entry_name) {
+  char* absolute_path = static_cast<char*>(gpr_malloc(
+      strlen(valid_cert_dir) + strlen(file_entry_name) + 2));
+  strncpy(absolute_path, valid_cert_dir, strlen(valid_cert_dir) + 1);
+  strcat(absolute_path, "/");
+  strcat(absolute_path, file_entry_name);
+  return absolute_path;
+}
+
+// Copy first cert into bundle, then concatenate subsequent certs
+void DefaultSslRootStore::CopyOrConcatenateCertIntoBundle(char* bundle,
+						char* current_cert_string) {
+  if (bundle == nullptr) {
+    bundle = static_cast<char*>(gpr_malloc(
+                          strlen(current_cert_string) + 1));
+    strncpy(bundle, current_cert_string, strlen(current_cert_string) + 1);
+  } else {
+    char* temp_string = static_cast<char*>(gpr_malloc(
+    strlen(bundle) + strlen(current_cert_string)));
+    strncpy(temp_string, bundle, strlen(bundle));
+    strcat(temp_string, current_cert_string);
+    bundle = static_cast<char*>(gpr_malloc(strlen(temp_string)));
+    strncpy(bundle, temp_string, strlen(temp_string));
+    gpr_free(temp_string);
+  }
+}
+
 //TODO: refactor this function to be shorter and easier to read
 grpc_slice DefaultSslRootStore::CreateRootCertsBundle() {
   grpc_slice bundle_slice = grpc_empty_slice();
   const char* found_cert_dir = FindValidCertsDirectory();
+
   if (found_cert_dir != nullptr) {
     FILE* cert_file;
-    DIR* ca_directory = opendir(found_cert_dir);
     struct dirent* directory_entry;
     char* bundle_string = nullptr;
     grpc_slice single_cert_slice = grpc_empty_slice();
+    DIR* ca_directory = opendir(found_cert_dir);
     if (ca_directory != nullptr) {
-      char* file_path = nullptr;
       while ((directory_entry = readdir(ca_directory)) != nullptr) {
         if (directory_entry->d_type == DT_DIR ||
             strcmp(directory_entry->d_name, ".") == 0 ||
             strcmp(directory_entry->d_name, "..") == 0) { // no subdirectories
           continue;
         }
-        // Combine directory path with filename to get absolute path
-        file_path = static_cast<char*>(gpr_malloc(
-            strlen(found_cert_dir) + strlen(directory_entry->d_name) + 2));
-        strncpy(file_path, found_cert_dir, strlen(found_cert_dir) + 1);
-        strcat(file_path, "/");
-        strcat(file_path, directory_entry->d_name);
+	char* file_entry_name = directory_entry->d_name;
+	char* file_path = GetAbsoluteCertFilePath(found_cert_dir,
+							file_entry_name);
         cert_file = fopen(file_path, "rw");
         if (cert_file != nullptr) {
           GRPC_LOG_IF_ERROR(
               "load_file",
               grpc_load_file(file_path, 1, &single_cert_slice));
           char* single_cert_string = grpc_slice_to_c_string(single_cert_slice);
-          /* Copy first cert into bundle_string, then concatenate as more files
-             are read */
-          if (bundle_string == nullptr) {
-            bundle_string = static_cast<char*>(gpr_malloc(
-                strlen(single_cert_string) + 1));
-            strncpy(bundle_string, single_cert_string,
-                    strlen(single_cert_string) + 1);
-          } else {
-            char* temp_string = static_cast<char*>(gpr_malloc(
-                strlen(bundle_string) + strlen(single_cert_string)));
-            strncpy(temp_string, bundle_string, strlen(bundle_string));
-            strcat(temp_string, single_cert_string);
-            bundle_string = static_cast<char*>(gpr_malloc(strlen(temp_string)));
-            strncpy(bundle_string, temp_string, strlen(temp_string));
-            gpr_free(temp_string);
-          }
+	  CopyOrConcatenateCertIntoBundle(bundle_string, single_cert_string);         
           gpr_free(single_cert_string);
           fclose(cert_file);
         }
       }
       closedir(ca_directory);
       strcat(bundle_string, "\0");
-      bundle_slice = grpc_slice_from_copied_buffer(bundle_string,
+      if (bundle_string != nullptr) {
+        bundle_slice = grpc_slice_from_copied_buffer(bundle_string,
                                                    strlen(bundle_string));
+      }
     }
   }
   return bundle_slice;
