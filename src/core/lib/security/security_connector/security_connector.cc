@@ -1305,7 +1305,7 @@ char* DefaultSslRootStore::GetAbsoluteCertFilePath(
 }
 
 // Copy first cert into bundle, then concatenate subsequent certs
-void DefaultSslRootStore::CopyOrConcatenateCertIntoBundle(char* bundle,
+void DefaultSslRootStore::CopyOrConcatenateCertIntoBundle(char* &bundle,
 						char* current_cert_string) {
   if (bundle == nullptr) {
     bundle = static_cast<char*>(gpr_malloc(
@@ -1349,7 +1349,7 @@ grpc_slice DefaultSslRootStore::CreateRootCertsBundle() {
               "load_file",
               grpc_load_file(file_path, 1, &single_cert_slice));
           char* single_cert_string = grpc_slice_to_c_string(single_cert_slice);
-	  CopyOrConcatenateCertIntoBundle(bundle_string, single_cert_string);         
+	  CopyOrConcatenateCertIntoBundle(bundle_string, single_cert_string);
           gpr_free(single_cert_string);
           fclose(cert_file);
         }
