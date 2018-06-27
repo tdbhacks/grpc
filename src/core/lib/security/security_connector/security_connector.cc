@@ -1238,7 +1238,8 @@ grpc_slice DefaultSslRootStore::ComputePemRootCerts() {
       ovrd_res != GRPC_SSL_ROOTS_OVERRIDE_FAIL_PERMANENTLY) {
     const char* system_root_certs = nullptr;
     // Use system certs if flag is enabled.
-    if (use_system_certs != nullptr && use_custom_system_roots_dir != nullptr) {
+    if (use_system_certs != nullptr && use_custom_system_roots_dir == nullptr) {
+      DetectPlatform();
       system_root_certs = GetSystemRootCerts();
       if (system_root_certs != nullptr) {
         GRPC_LOG_IF_ERROR("load_file",
@@ -1247,6 +1248,7 @@ grpc_slice DefaultSslRootStore::ComputePemRootCerts() {
         result = CreateRootCertsBundle();
       }
     } else if (use_custom_system_roots_dir != nullptr) {
+	DetectPlatform();
         result = CreateRootCertsBundle();
     }
     if (use_system_certs == nullptr || GRPC_SLICE_IS_EMPTY(result)) {
