@@ -394,6 +394,15 @@ class TestDefaultSslRootStore : public DefaultSslRootStore {
   static grpc_slice CreateRootCertsBundleForTesting() {
     return CreateRootCertsBundle();
   }
+
+  static char* GetAbsoluteCertFilePathForTesting(const char* directory,
+                                                 const char* filename) {
+    return GetAbsoluteCertFilePath(directory, filename);
+  }
+
+  static void AddCertToBundleForTesting(char* &bundle, char* cert) {
+    return AddCertToBundle(bundle, cert);
+  }
 };
 
 }  // namespace
@@ -479,16 +488,42 @@ static void test_system_ssl_roots() {
   GPR_ASSERT(strcmp(platform, "apple") == 0);
 #endif
 
+  /* Test GetAbsoluteCertFilePath */
+  const char* directory = "nonexistent/test/directory";
+  const char* filename = "doesnotexist.txt";
+  char* result_path =
+      grpc_core::TestDefaultSslRootStore::GetAbsoluteCertFilePathForTesting(
+          directory,
+          filename);
+  GPR_ASSERT(
+      strcmp(result_path, "nonexistent/test/directory/doesnotexist.txt") == 0);
+
+  /* Test AddCertToBundle when bundle string is null (should copy) */
+  char* bundle_ptr = nullptr;
+  char cert_str[4] = "123";
+  char* cert_ptr = cert_str;
+  grpc_core::TestDefaultSslRootStore::AddCertToBundleForTesting(bundle_ptr,
+                                                                cert_ptr);
+  GPR_ASSERT(strcmp(bundle_ptr, "123") == 0);
+
+  /* Test AddCertToBundle when bundle string is not null (should concatenate) */
+  char bundle_str[8] = "Testing";
+  bundle_ptr = bundle_str;
+  grpc_core::TestDefaultSslRootStore::AddCertToBundleForTesting(bundle_ptr,
+                                                                cert_ptr);
+  strcat(bundle_ptr, "\0");
+  GPR_ASSERT(strcmp(bundle_ptr, "Testing123") == 0);
+
   /* Test that CreateRootCertsBundle returns a correct slice */
   grpc_slice roots_bundle = grpc_empty_slice();
   GRPC_LOG_IF_ERROR("load_file",
                     grpc_load_file("test/core/security/etc/bundle/bundle.pem",
                                    1, &roots_bundle));
   gpr_setenv("GRPC_SYSTEM_ROOTS_DIR", "test/core/security/etc/roots");
-  /* result should have the same content as roots_bundle */
-  grpc_slice result =
+  /* result_slice should have the same content as roots_bundle */
+  grpc_slice result_slice =
       grpc_core::TestDefaultSslRootStore::CreateRootCertsBundleForTesting();
-  GPR_ASSERT(strcmp(grpc_slice_to_c_string(result),
+  GPR_ASSERT(strcmp(grpc_slice_to_c_string(result_slice),
                     grpc_slice_to_c_string(roots_bundle)) == 0);
 
   /* TODO: add more tests for CreateRootCertsBundle */
