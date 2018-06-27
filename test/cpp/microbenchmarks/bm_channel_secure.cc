@@ -43,10 +43,20 @@ class ChannelDestroyerFixture {
   grpc_channel* channel_ = nullptr;
 };
 
+namespace grpc_core {
+  class TestDefaultSslRootStore : public DefaultSslRootStore {
+    public:
+      static grpc_slice ComputePemRootCertsForTesting() {
+        return ComputePemRootCerts();
+      }
+  };
+} 
+
 class SecureChannelFixture : public ChannelDestroyerFixture {
  public:
   SecureChannelFixture() {}
   void Init() override {
+
     grpc_channel_credentials* channel_creds = grpc_ssl_credentials_create(
 			 nullptr, nullptr, nullptr, nullptr);
 
@@ -60,18 +70,9 @@ class SecureChannelFixture : public ChannelDestroyerFixture {
 
     auto status = ssl_create_security_connector(channel_creds, nullptr,
 		"localhost:1234", nullptr, &channel_sc, nullptr);
-    (void)status;*/
+    (void)status;
 
-    grpc_channel_check_connectivity_state(channel_, 1);
-  }
-};
-
-class LameChannelFixture : public ChannelDestroyerFixture {
- public:
-  LameChannelFixture() {}
-  void Init() override {
-    channel_ = grpc_lame_client_channel_create(
-        "localhost:1234", GRPC_STATUS_UNAUTHENTICATED, "blah");
+    grpc_channel_check_connectivity_state(channel_, 1);*/
   }
 };
 
@@ -91,9 +92,6 @@ static void BM_SecureChannelCreateDestroy(benchmark::State& state) {
 BENCHMARK_TEMPLATE(BM_SecureChannelCreateDestroy, SecureChannelFixture)
     ->Range(0, 512);
 ;
-BENCHMARK_TEMPLATE(BM_SecureChannelCreateDestroy, LameChannelFixture)
-    ->Range(0, 512);
-;
 
 // Some distros have RunSpecifiedBenchmarks under the benchmark namespace,
 // and others do not. This allows us to support both modes.
@@ -104,6 +102,7 @@ void RunTheBenchmarksNamespaced() { RunSpecifiedBenchmarks(); }
 int main(int argc, char** argv) {
   ::benchmark::Initialize(&argc, argv);
   ::grpc::testing::InitTest(&argc, &argv, false);
+  grpc_core::TestDefaultSslRootStore::ComputePemRootCertsForTesting();
   benchmark::RunTheBenchmarksNamespaced();
   return 0;
 }
