@@ -1295,7 +1295,7 @@ const char* DefaultSslRootStore::FindValidCertsDirectory() {
 
 // Combine directory path with filename to get absolute path
 char* DefaultSslRootStore::GetAbsoluteCertFilePath(const char* valid_cert_dir,
-                                                   char* file_entry_name) {
+    const char* file_entry_name) {
   char* absolute_path = static_cast<char*>(gpr_malloc(
       strlen(valid_cert_dir) + strlen(file_entry_name) + 2));
   strncpy(absolute_path, valid_cert_dir, strlen(valid_cert_dir) + 1);
@@ -1305,18 +1305,18 @@ char* DefaultSslRootStore::GetAbsoluteCertFilePath(const char* valid_cert_dir,
 }
 
 // Copy first cert into bundle, then concatenate subsequent certs
-void DefaultSslRootStore::CopyOrConcatenateCertIntoBundle(char* &bundle,
+void DefaultSslRootStore::AddCertToBundle(char* &bundle,
     char* current_cert_string) { //TODO: make bundle param style-guide compliant
   if (bundle == nullptr) {
     bundle = static_cast<char*>(gpr_malloc(strlen(current_cert_string) + 1));
     strncpy(bundle, current_cert_string, strlen(current_cert_string) + 1);
   } else {
     char* temp_string = static_cast<char*>(gpr_malloc(
-    strlen(bundle) + strlen(current_cert_string)));
+        strlen(bundle) + strlen(current_cert_string) + 1));
     strncpy(temp_string, bundle, strlen(bundle));
     strcat(temp_string, current_cert_string);
-    bundle = static_cast<char*>(gpr_malloc(strlen(temp_string)));
-    strncpy(bundle, temp_string, strlen(temp_string));
+    bundle = static_cast<char*>(gpr_malloc(strlen(temp_string) + 1));
+    strncpy(bundle, temp_string, strlen(temp_string) + 1);
     gpr_free(temp_string);
   }
 }
@@ -1347,7 +1347,7 @@ grpc_slice DefaultSslRootStore::CreateRootCertsBundle() {
               "load_file",
               grpc_load_file(file_path, 1, &single_cert_slice));
           char* single_cert_string = grpc_slice_to_c_string(single_cert_slice);
-          CopyOrConcatenateCertIntoBundle(bundle_string, single_cert_string);
+          AddCertToBundle(bundle_string, single_cert_string);
           gpr_free(single_cert_string);
           fclose(cert_file);
         }
