@@ -18,6 +18,7 @@
 
 /* Benchmark channel */
 
+#include <chrono>
 #include <grpc/grpc_security.h>
 #include "src/core/lib/security/credentials/ssl/ssl_credentials.h"
 //#include "src/core/lib/security/credentials/ssl/ssl_credentials.cc"
@@ -102,7 +103,15 @@ void RunTheBenchmarksNamespaced() { RunSpecifiedBenchmarks(); }
 int main(int argc, char** argv) {
   ::benchmark::Initialize(&argc, argv);
   ::grpc::testing::InitTest(&argc, &argv, false);
+  auto start = std::chrono::high_resolution_clock::now();
   grpc_core::TestDefaultSslRootStore::ComputePemRootCertsForTesting();
+  auto finish = std::chrono::high_resolution_clock::now();
+  auto time_elapsed = std::chrono::duration_cast<std::chrono::nanoseconds>
+                                                    (finish-start).count();
+  std::cout << "Root certs computation took: "
+            << time_elapsed
+            << "nanoseconds\n\n";
+
   benchmark::RunTheBenchmarksNamespaced();
   return 0;
 }
