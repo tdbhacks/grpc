@@ -18,7 +18,6 @@
 
 #include <stdio.h>
 #include <string.h>
-#include <dirent.h>
 
 #include <grpc/grpc_security.h>
 #include <grpc/support/alloc.h>
@@ -34,7 +33,6 @@
 #include "src/core/tsi/ssl_transport_security.h"
 #include "src/core/tsi/transport_security.h"
 #include "test/core/util/test_config.h"
-#include "src/core/lib/iomgr/load_file.h"
 
 static int check_transport_security_type(const grpc_auth_context* ctx) {
   grpc_auth_property_iterator it = grpc_auth_context_find_properties_by_name(
@@ -365,43 +363,10 @@ static void test_ipv6_address_san(void) {
 namespace grpc_core {
 namespace {
 
-class TestDefaultSslRootStore : public DefaultSslRootStore {
+class TestDefafaultSllRootStore : public DefaultSslRootStore {
  public:
   static grpc_slice ComputePemRootCertsForTesting() {
     return ComputePemRootCerts();
-  }
-
-  static const char* GetSystemRootCertsForTesting() {
-    return GetSystemRootCerts();
-  }
-
-  static void SetPlatformForTesting(const char* platform) {
-    SetPlatform(platform);
-  }
-
-  static const char* GetPlatformForTesting() {
-    return GetPlatform();
-  }
-
-  static void DetectPlatformForTesting() {
-    DetectPlatform();
-  }
-
-  static const char* GetSystemRootsFlagForTesting() {
-    return GetSystemRootsFlag();
-  }
-
-  static grpc_slice CreateRootCertsBundleForTesting() {
-    return CreateRootCertsBundle();
-  }
-
-  static char* GetAbsoluteCertFilePathForTesting(const char* directory,
-                                                 const char* filename) {
-    return GetAbsoluteCertFilePath(directory, filename);
-  }
-
-  static char* AddCertToBundleForTesting(char** bundle, char* cert) {
-    return AddCertToBundle(bundle, cert);
   }
 };
 
@@ -424,7 +389,7 @@ static void test_default_ssl_roots(void) {
   gpr_setenv(GRPC_DEFAULT_SSL_ROOTS_FILE_PATH_ENV_VAR, "");
   grpc_set_ssl_roots_override_callback(override_roots_success);
   grpc_slice roots =
-      grpc_core::TestDefaultSslRootStore::ComputePemRootCertsForTesting();
+      grpc_core::TestDefafaultSllRootStore::ComputePemRootCertsForTesting();
   char* roots_contents = grpc_slice_to_c_string(roots);
   grpc_slice_unref(roots);
   GPR_ASSERT(strcmp(roots_contents, roots_for_override_api) == 0);
@@ -433,7 +398,7 @@ static void test_default_ssl_roots(void) {
   /* Now let's set the env var: We should get the contents pointed value
      instead. */
   gpr_setenv(GRPC_DEFAULT_SSL_ROOTS_FILE_PATH_ENV_VAR, roots_env_var_file_path);
-  roots = grpc_core::TestDefaultSslRootStore::ComputePemRootCertsForTesting();
+  roots = grpc_core::TestDefafaultSllRootStore::ComputePemRootCertsForTesting();
   roots_contents = grpc_slice_to_c_string(roots);
   grpc_slice_unref(roots);
   GPR_ASSERT(strcmp(roots_contents, roots_for_env_var) == 0);
@@ -442,7 +407,7 @@ static void test_default_ssl_roots(void) {
   /* Now reset the env var. We should fall back to the value overridden using
      the api. */
   gpr_setenv(GRPC_DEFAULT_SSL_ROOTS_FILE_PATH_ENV_VAR, "");
-  roots = grpc_core::TestDefaultSslRootStore::ComputePemRootCertsForTesting();
+  roots = grpc_core::TestDefafaultSllRootStore::ComputePemRootCertsForTesting();
   roots_contents = grpc_slice_to_c_string(roots);
   grpc_slice_unref(roots);
   GPR_ASSERT(strcmp(roots_contents, roots_for_override_api) == 0);
@@ -451,82 +416,15 @@ static void test_default_ssl_roots(void) {
   /* Now setup a permanent failure for the overridden roots and we should get
      an empty slice. */
   grpc_set_ssl_roots_override_callback(override_roots_permanent_failure);
-  roots = grpc_core::TestDefaultSslRootStore::ComputePemRootCertsForTesting();
+  roots = grpc_core::TestDefafaultSllRootStore::ComputePemRootCertsForTesting();
   GPR_ASSERT(GRPC_SLICE_IS_EMPTY(roots));
   const tsi_ssl_root_certs_store* root_store =
-      grpc_core::TestDefaultSslRootStore::GetRootStore();
+      grpc_core::TestDefafaultSllRootStore::GetRootStore();
   GPR_ASSERT(root_store == nullptr);
-
-  /* TODO: add tests for ComputePemRootCerts using system roots */
 
   /* Cleanup. */
   remove(roots_env_var_file_path);
   gpr_free(roots_env_var_file_path);
-}
-
-static void test_system_ssl_roots() {
-  /* Test that the GetSystemRootCerts function returns a nullptr when the
-     platform variable doesn't match one of the options. */
-  grpc_core::TestDefaultSslRootStore::SetPlatformForTesting("test");
-  const char* cert_path =
-      grpc_core::TestDefaultSslRootStore::GetSystemRootCertsForTesting();
-  GPR_ASSERT(cert_path == nullptr);
-
-  /* Test that the DetectPlatform function correctly detects Linux, Windows,
-     and OSX/MacOS */
-  grpc_core::TestDefaultSslRootStore::DetectPlatformForTesting();
-  const char* platform =
-      grpc_core::TestDefaultSslRootStore::GetPlatformForTesting();
-#if defined __linux__
-  // Linux environment (any GNU/Linux distribution)
-  GPR_ASSERT(strcmp(platform, "linux") == 0);
-#elif defined _WIN32
-  // Windows environment (32 and 64 bit)
-  GPR_ASSERT(strcmp(platform, "windows") == 0);
-#elif defined __APPLE__ && __MACH__
-  // MacOS / OSX environment
-  GPR_ASSERT(strcmp(platform, "apple") == 0);
-#endif
-
-  /* Test GetAbsoluteCertFilePath */
-  const char* directory = "nonexistent/test/directory";
-  const char* filename = "doesnotexist.txt";
-  char* result_path =
-      grpc_core::TestDefaultSslRootStore::GetAbsoluteCertFilePathForTesting(
-          directory,
-          filename);
-  GPR_ASSERT(
-      strcmp(result_path, "nonexistent/test/directory/doesnotexist.txt") == 0);
-
-  /* Test AddCertToBundle when bundle string is null (should copy) */
-  char* bundle_ptr = nullptr;
-  char cert_str[4] = "123";
-  char* cert_ptr = cert_str;
-  grpc_core::TestDefaultSslRootStore::AddCertToBundleForTesting(&bundle_ptr,
-                                                                cert_ptr);
-  GPR_ASSERT(strcmp(bundle_ptr, "123") == 0);
-
-  /* Test AddCertToBundle when bundle string is not null (should concatenate) */
-  char bundle_str[8] = "Testing";
-  bundle_ptr = bundle_str;
-  grpc_core::TestDefaultSslRootStore::AddCertToBundleForTesting(&bundle_ptr,
-                                                                cert_ptr);
-  strcat(bundle_ptr, "\0");
-  GPR_ASSERT(strcmp(bundle_ptr, "Testing123") == 0);
-
-  /* Test that CreateRootCertsBundle returns a correct slice */
-  grpc_slice roots_bundle = grpc_empty_slice();
-  GRPC_LOG_IF_ERROR("load_file",
-                    grpc_load_file("test/core/security/etc/bundle/bundle.pem",
-                                   1, &roots_bundle));
-  gpr_setenv("GRPC_SYSTEM_ROOTS_DIR", "test/core/security/etc/roots");
-  /* result_slice should have the same content as roots_bundle */
-  grpc_slice result_slice =
-      grpc_core::TestDefaultSslRootStore::CreateRootCertsBundleForTesting();
-  GPR_ASSERT(strcmp(grpc_slice_to_c_string(result_slice),
-                    grpc_slice_to_c_string(roots_bundle)) == 0);
-
-  /* TODO: add more tests for CreateRootCertsBundle */
 }
 
 int main(int argc, char** argv) {
@@ -540,10 +438,6 @@ int main(int argc, char** argv) {
   test_cn_and_multiple_sans_and_others_ssl_peer_to_auth_context();
   test_ipv6_address_san();
   test_default_ssl_roots();
-
-  if (grpc_core::TestDefaultSslRootStore::GetSystemRootsFlagForTesting()) {
-    test_system_ssl_roots();
-  }
 
   grpc_shutdown();
   return 0;

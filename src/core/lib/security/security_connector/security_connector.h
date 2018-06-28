@@ -22,7 +22,6 @@
 #include <grpc/support/port_platform.h>
 
 #include <stdbool.h>
-#include <string.h>
 
 #include <grpc/grpc_security.h>
 
@@ -264,40 +263,6 @@ class DefaultSslRootStore {
   // This function is protected instead of private, so that it can be tested.
   static grpc_slice ComputePemRootCerts();
 
-  // Returns the path for os-specific root certificates.
-  // Protected for testing.
-  static const char* GetSystemRootCerts();
-
-  // Detect the os platform and set the platform variable to it.
-  // Protected for testing.
-  static void DetectPlatform();
-
-  // Creates a bundle file from all the existing system certificates.
-  // Returns the path to the bundle file.
-  // Protected for testing.
-  static grpc_slice CreateRootCertsBundle();
-
-  // Looks for a valid directory to load certificates from.
-  // Returns such path or nullptr otherwise.
-  // Protected for testing.
-  static const char* FindValidCertsDirectory();
-
-  // Gets the absolute file path needed to load a certificate file.
-  // Returns such path.
-  // Protected for testing.
-  static char* GetAbsoluteCertFilePath(const char* valid_cert_dir,
-                                       const char* file_entry_name);
-
-  // Handles bundle creation by concatenating single cert files.
-  // Protected for testing.
-  static char* AddCertToBundle(char** bundle, char* current_cert_string);
-
-  // Set and get the platform variable
-  // Required for GetSystemRootCerts() tests
-  static void SetPlatform(const char* pform) { platform = pform; }
-  static const char* GetPlatform() { return platform; }
-  static const char* GetSystemRootsFlag() { return use_system_certs; }
-
  private:
   // Construct me not!
   DefaultSslRootStore();
@@ -313,20 +278,6 @@ class DefaultSslRootStore {
 
   // Default PEM root certificates.
   static grpc_slice default_pem_root_certs_;
-
-  // List of possible linux certificate files and directories
-  static const char* linux_cert_files_[];
-  static const char* linux_cert_directories_[];
-  static size_t num_cert_files_, num_cert_dirs_;
-
-  // Flag to enable/disable system root certificates feature
-  static const char* use_system_certs;
-
-  // Flag to specify custom directory that contains the system root certs
-  static const char* use_custom_system_roots_dir;
-
-  // Variable to hold the name of the os
-  static const char* platform;
 };
 
 }  // namespace grpc_core
