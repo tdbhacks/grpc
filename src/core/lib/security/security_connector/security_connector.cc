@@ -1249,14 +1249,13 @@ grpc_slice DefaultSslRootStore::ComputePemRootCerts() {
         result = CreateRootCertsBundle();
       }
     } else if (use_custom_system_roots_dir != nullptr) {
-	DetectPlatform();
-        result = CreateRootCertsBundle();
+      DetectPlatform();
+      result = CreateRootCertsBundle();
     }
     if (use_system_certs == nullptr || GRPC_SLICE_IS_EMPTY(result)) {
       // Fallback to certs manually shipped with gRPC
       GRPC_LOG_IF_ERROR("load_file",
-                        grpc_load_file(installed_roots_path, 1,
-                                       &result));
+                        grpc_load_file(installed_roots_path, 1, &result));
     }
   }
   return result;
@@ -1281,6 +1280,7 @@ const char* DefaultSslRootStore::GetSystemRootCerts() {
   return result;
 }
 
+// Search through list of Linux directories to find the right one
 const char* DefaultSslRootStore::FindValidCertsDirectory() {
   DIR* directory;
   char* custom_dir = nullptr;
@@ -1310,23 +1310,23 @@ char* DefaultSslRootStore::GetAbsoluteCertFilePath(
 }
 
 // Copy first cert into bundle, then concatenate subsequent certs
-//TODO: make bundle param style-guide compliant
-void DefaultSslRootStore::AddCertToBundle(char* &bundle,
+char* DefaultSslRootStore::AddCertToBundle(char** bundle,
     char* current_cert_string) {
-  if (bundle == nullptr) {
-    bundle = static_cast<char*>(gpr_malloc(
+  if (*bundle == nullptr) {
+    *bundle = static_cast<char*>(gpr_malloc(
         strlen(current_cert_string) + 1));
-    strncpy(bundle, current_cert_string,
+    strncpy(*bundle, current_cert_string,
         strlen(current_cert_string) + 1);
   } else {
     char* temp_string = static_cast<char*>(gpr_malloc(
-        strlen(bundle) + strlen(current_cert_string) + 1));
-    strncpy(temp_string, bundle, strlen(bundle));
+        strlen(*bundle) + strlen(current_cert_string) + 1));
+    strncpy(temp_string, *bundle, strlen(*bundle));
     strcat(temp_string, current_cert_string);
-    bundle = static_cast<char*>(gpr_malloc(strlen(temp_string) + 1));
-    strncpy(bundle, temp_string, strlen(temp_string) + 1);
+    *bundle = static_cast<char*>(gpr_malloc(strlen(temp_string) + 1));
+    strncpy(*bundle, temp_string, strlen(temp_string) + 1);
     gpr_free(temp_string);
   }
+  return *bundle;
 }
 
 grpc_slice DefaultSslRootStore::CreateRootCertsBundle() {
@@ -1357,7 +1357,7 @@ grpc_slice DefaultSslRootStore::CreateRootCertsBundle() {
               grpc_load_file(file_path, 1, &single_cert_slice));
           char* single_cert_string = grpc_slice_to_c_string(
               single_cert_slice);
-          AddCertToBundle(bundle_string, single_cert_string);
+          bundle_string = AddCertToBundle(&bundle_string, single_cert_string);
           gpr_free(single_cert_string);
           fclose(cert_file);
         }

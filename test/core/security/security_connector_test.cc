@@ -400,7 +400,7 @@ class TestDefaultSslRootStore : public DefaultSslRootStore {
     return GetAbsoluteCertFilePath(directory, filename);
   }
 
-  static void AddCertToBundleForTesting(char* &bundle, char* cert) {
+  static char* AddCertToBundleForTesting(char** bundle, char* cert) {
     return AddCertToBundle(bundle, cert);
   }
 };
@@ -502,14 +502,14 @@ static void test_system_ssl_roots() {
   char* bundle_ptr = nullptr;
   char cert_str[4] = "123";
   char* cert_ptr = cert_str;
-  grpc_core::TestDefaultSslRootStore::AddCertToBundleForTesting(bundle_ptr,
+  grpc_core::TestDefaultSslRootStore::AddCertToBundleForTesting(&bundle_ptr,
                                                                 cert_ptr);
   GPR_ASSERT(strcmp(bundle_ptr, "123") == 0);
 
   /* Test AddCertToBundle when bundle string is not null (should concatenate) */
   char bundle_str[8] = "Testing";
   bundle_ptr = bundle_str;
-  grpc_core::TestDefaultSslRootStore::AddCertToBundleForTesting(bundle_ptr,
+  grpc_core::TestDefaultSslRootStore::AddCertToBundleForTesting(&bundle_ptr,
                                                                 cert_ptr);
   strcat(bundle_ptr, "\0");
   GPR_ASSERT(strcmp(bundle_ptr, "Testing123") == 0);
