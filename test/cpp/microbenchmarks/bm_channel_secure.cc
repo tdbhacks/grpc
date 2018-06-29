@@ -21,6 +21,7 @@
 #include <chrono>
 #include <grpc/grpc_security.h>
 #include "src/core/lib/security/credentials/ssl/ssl_credentials.h"
+#include "src/core/lib/gpr/env.h"
 
 #include <benchmark/benchmark.h>
 #include <grpc/grpc.h>
@@ -97,10 +98,12 @@ int main(int argc, char** argv) {
   auto finish = std::chrono::high_resolution_clock::now();
   auto time_elapsed = std::chrono::duration_cast<std::chrono::nanoseconds>
                                                     (finish-start).count();
-  std::cout << "Root certs computation took: "
-            << time_elapsed
-            << "nanoseconds\n\n";
-
+  char* env_var_value = (gpr_getenv("GRPC_SYSTEM_SSL_ROOTS_FLAG"));
   benchmark::RunTheBenchmarksNamespaced();
+  std::cout << "\nRoot certs computation took: "
+          << time_elapsed
+          << "nanoseconds, with the env variable set to "
+          << (env_var_value ? env_var_value : "null")
+          << "\n\n";
   return 0;
 }
