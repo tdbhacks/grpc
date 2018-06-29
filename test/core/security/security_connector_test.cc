@@ -519,7 +519,7 @@ static void test_system_ssl_roots() {
   GRPC_LOG_IF_ERROR("load_file",
                     grpc_load_file("test/core/security/etc/bundle/bundle.pem",
                                    1, &roots_bundle));
-  gpr_setenv("GRPC_SYSTEM_ROOTS_DIR", "test/core/security/etc/roots");
+  gpr_setenv("GRPC_SYSTEM_SSL_ROOTS_DIR", "test/core/security/etc/roots");
   /* result_slice should have the same content as roots_bundle */
   grpc_slice result_slice =
       grpc_core::TestDefaultSslRootStore::CreateRootCertsBundleForTesting();
