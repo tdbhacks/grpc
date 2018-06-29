@@ -59,13 +59,13 @@ static const char* installed_roots_path =
 #endif
 
 /* --- Flag to enable/disable system root certificates feature --- */
-#ifndef GRPC_SYSTEM_SSL_ROOTS_FLAG
-#define GRPC_SYSTEM_SSL_ROOTS_FLAG "GRPC_SYSTEM_SSL_ROOTS_FLAG"
+#ifndef GRPC_USE_SYSTEM_SSL_ROOTS
+#define GRPC_USE_SYSTEM_SSL_ROOTS "GRPC_USE_SYSTEM_SSL_ROOTS"
 #endif
 
 /* --- Flag to specify custom directory for system certs testing --- */
-#ifndef GRPC_SYSTEM_ROOTS_DIR
-#define GRPC_SYSTEM_ROOTS_DIR "GRPC_SYSTEM_ROOTS_DIR"
+#ifndef GRPC_SYSTEM_SSL_ROOTS_DIR
+#define GRPC_SYSTEM_SSL_ROOTS_DIR "GRPC_SYSTEM_SSL_ROOTS_DIR"
 #endif
 
 /* -- Overridden default roots. -- */
@@ -1194,9 +1194,9 @@ size_t DefaultSslRootStore::num_cert_files_ = 5;
 size_t DefaultSslRootStore::num_cert_dirs_ = 5;
 const char* DefaultSslRootStore::platform;
 const char* DefaultSslRootStore::use_system_certs =
-    gpr_getenv(GRPC_SYSTEM_SSL_ROOTS_FLAG);
+    gpr_getenv(GRPC_USE_SYSTEM_SSL_ROOTS);
 const char* DefaultSslRootStore::use_custom_system_roots_dir =
-    gpr_getenv(GRPC_SYSTEM_ROOTS_DIR);
+    gpr_getenv(GRPC_SYSTEM_SSL_ROOTS_DIR);
 
 const tsi_ssl_root_certs_store* DefaultSslRootStore::GetRootStore() {
   InitRootStore();
@@ -1284,7 +1284,7 @@ const char* DefaultSslRootStore::GetSystemRootCerts() {
 const char* DefaultSslRootStore::FindValidCertsDirectory() {
   DIR* directory;
   char* custom_dir = nullptr;
-  if ((custom_dir = gpr_getenv(GRPC_SYSTEM_ROOTS_DIR)) != nullptr) {
+  if ((custom_dir = gpr_getenv(GRPC_SYSTEM_SSL_ROOTS_DIR)) != nullptr) {
     return custom_dir;
   }
   for (size_t i = 0; i < num_cert_dirs_; i++) {
