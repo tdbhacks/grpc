@@ -477,10 +477,10 @@ static void test_system_ssl_roots() {
   grpc_core::TestDefaultSslRootStore::DetectPlatformForTesting();
   const char* platform =
       grpc_core::TestDefaultSslRootStore::GetPlatformForTesting();
-#if defined __linux__
+#if defined GPR_LINUX
   // Linux environment (any GNU/Linux distribution)
   GPR_ASSERT(strcmp(platform, "linux") == 0);
-#elif defined _WIN32
+#elif defined GPR_WINDOWS
   // Windows environment (32 and 64 bit)
   GPR_ASSERT(strcmp(platform, "windows") == 0);
 #elif defined __APPLE__ && __MACH__

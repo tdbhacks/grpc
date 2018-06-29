@@ -1369,10 +1369,10 @@ grpc_slice DefaultSslRootStore::CreateRootCertsBundle() {
 }
 
 void DefaultSslRootStore::DetectPlatform() {
-#if defined __linux__
+#if defined GPR_LINUX
   // Linux environment (any GNU/Linux distribution)
   SetPlatform("linux");
-#elif defined _WIN32
+#elif defined GPR_WINDOWS
   // Windows environment (32 and 64 bit)
   SetPlatform("windows");
 #elif defined __APPLE__ && __MACH__
