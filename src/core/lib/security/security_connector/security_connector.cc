@@ -1356,12 +1356,14 @@ grpc_slice DefaultSslRootStore::CreateRootCertsBundle() {
           gpr_free(single_cert_string);
           fclose(cert_file);
         }
+        gpr_free(file_path);
       }
       closedir(ca_directory);
       strcat(bundle_string, "\0");
       if (bundle_string != nullptr) {
         bundle_slice = grpc_slice_from_copied_buffer(bundle_string,
             strlen(bundle_string));
+        gpr_free(bundle_string);
       }
     }
   }

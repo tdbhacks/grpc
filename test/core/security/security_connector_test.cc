@@ -465,6 +465,9 @@ static void test_default_ssl_roots(void) {
 }
 
 static void test_system_ssl_roots() {
+  if (!grpc_core::TestDefaultSslRootStore::GetSystemRootsFlagForTesting()) {
+    gpr_setenv("GRPC_USE_SYSTEM_SSL_ROOTS", "true");
+  }
   /* Test that the GetSystemRootCerts function returns a nullptr when the
      platform variable doesn't match one of the options. */
   grpc_core::TestDefaultSslRootStore::SetPlatformForTesting("test");
@@ -495,8 +498,8 @@ static void test_system_ssl_roots() {
       grpc_core::TestDefaultSslRootStore::GetAbsoluteCertFilePathForTesting(
           directory,
           filename);
-  GPR_ASSERT(
-      strcmp(result_path, "nonexistent/test/directory/doesnotexist.txt") == 0);
+  GPR_ASSERT(strcmp(result_path,
+                    "nonexistent/test/directory/doesnotexist.txt") == 0);
 
   /* Test AddCertToBundle when bundle string is null (should copy) */
   char* bundle_ptr = nullptr;
@@ -525,8 +528,13 @@ static void test_system_ssl_roots() {
       grpc_core::TestDefaultSslRootStore::CreateRootCertsBundleForTesting();
   GPR_ASSERT(strcmp(grpc_slice_to_c_string(result_slice),
                     grpc_slice_to_c_string(roots_bundle)) == 0);
-
   /* TODO: add more tests for CreateRootCertsBundle */
+
+  /* Clean up */
+  unsetenv("GRPC_USE_SYSTEM_SSL_ROOTS");
+  unsetenv("GRPC_SYSTEM_SSL_ROOTS_DIR");
+  gpr_free(result_path);
+  gpr_free(bundle_ptr);
 }
 
 int main(int argc, char** argv) {
@@ -540,10 +548,7 @@ int main(int argc, char** argv) {
   test_cn_and_multiple_sans_and_others_ssl_peer_to_auth_context();
   test_ipv6_address_san();
   test_default_ssl_roots();
-
-  if (grpc_core::TestDefaultSslRootStore::GetSystemRootsFlagForTesting()) {
-    test_system_ssl_roots();
-  }
+  test_system_ssl_roots();
 
   grpc_shutdown();
   return 0;
