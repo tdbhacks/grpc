@@ -96,7 +96,7 @@ int main(int argc, char** argv) {
 
   // New feature disabled
   auto start = std::chrono::high_resolution_clock::now();
-  gpr_setenv("GRPC_SYSTEM_SSL_ROOTS_FLAG", "1");
+  gpr_setenv("GRPC_SYSTEM_SSL_ROOTS_FLAG", "0");
   grpc_core::TestDefaultSslRootStore::ComputePemRootCertsForTesting();
   auto finish = std::chrono::high_resolution_clock::now();
   auto time_elapsed0 = std::chrono::duration_cast<std::chrono::nanoseconds>
@@ -104,7 +104,7 @@ int main(int argc, char** argv) {
 
   // New feature enabled
   start = std::chrono::high_resolution_clock::now();
-  gpr_setenv("GRPC_SYSTEM_SSL_ROOTS_FLAG", "0");
+  gpr_setenv("GRPC_SYSTEM_SSL_ROOTS_FLAG", "1");
   grpc_core::TestDefaultSslRootStore::ComputePemRootCertsForTesting();
   finish = std::chrono::high_resolution_clock::now();
   auto time_elapsed1 = std::chrono::duration_cast<std::chrono::nanoseconds>
