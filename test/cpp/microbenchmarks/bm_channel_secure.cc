@@ -21,6 +21,7 @@
 #include <chrono>
 #include <grpc/grpc_security.h>
 #include "src/core/lib/security/credentials/ssl/ssl_credentials.h"
+#include "src/core/lib/gpr/env.h"
 
 #include <benchmark/benchmark.h>
 #include <grpc/grpc.h>
@@ -92,15 +93,36 @@ void RunTheBenchmarksNamespaced() { RunSpecifiedBenchmarks(); }
 int main(int argc, char** argv) {
   ::benchmark::Initialize(&argc, argv);
   ::grpc::testing::InitTest(&argc, &argv, false);
+
+  // New feature disabled
   auto start = std::chrono::high_resolution_clock::now();
+  gpr_setenv("GRPC_SYSTEM_SSL_ROOTS_FLAG", "0");
   grpc_core::TestDefaultSslRootStore::ComputePemRootCertsForTesting();
   auto finish = std::chrono::high_resolution_clock::now();
-  auto time_elapsed = std::chrono::duration_cast<std::chrono::nanoseconds>
+  auto time_elapsed0 = std::chrono::duration_cast<std::chrono::nanoseconds>
                                                     (finish-start).count();
-  std::cout << "Root certs computation took: "
-            << time_elapsed
-            << "nanoseconds\n\n";
 
+  // New feature enabled
+  start = std::chrono::high_resolution_clock::now();
+  gpr_setenv("GRPC_SYSTEM_SSL_ROOTS_FLAG", "1");
+  grpc_core::TestDefaultSslRootStore::ComputePemRootCertsForTesting();
+  finish = std::chrono::high_resolution_clock::now();
+  auto time_elapsed1 = std::chrono::duration_cast<std::chrono::nanoseconds>
+                                                    (finish-start).count();
+
+  /* To use env var value set through "export" in shell:
+    char* env_var_value = (gpr_getenv("GRPC_SYSTEM_SSL_ROOTS_FLAG"));
+    then in cout: (env_var_value ? env_var_value : "null") */
   benchmark::RunTheBenchmarksNamespaced();
+
+  std::cout << "\nRoot certs computation took: "
+          << time_elapsed0
+          << " nanoseconds, with the feature disabled"
+          << "\n";
+
+  std::cout << "Root certs computation took: "
+          << time_elapsed1
+          << " nanoseconds, with the feature enabled"
+          << "\n\n";
   return 0;
 }
