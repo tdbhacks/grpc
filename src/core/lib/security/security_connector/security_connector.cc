@@ -1212,6 +1212,9 @@ const char* DefaultSslRootStore::GetPemRootCerts() {
 }
 
 grpc_slice DefaultSslRootStore::ComputePemRootCerts() {
+  // TODO: any better way to handle this for testing?
+  DefaultSslRootStore::use_system_certs =
+    gpr_getenv(GRPC_USE_SYSTEM_SSL_ROOTS);
   grpc_slice result = grpc_empty_slice();
   // First try to load the roots from the environment.
   char* default_root_certs_path =
