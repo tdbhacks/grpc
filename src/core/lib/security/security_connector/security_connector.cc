@@ -59,13 +59,13 @@ static const char* installed_roots_path =
 #endif
 
 /* --- Flag to enable/disable system root certificates feature --- */
-#ifndef GRPC_SYSTEM_SSL_ROOTS_FLAG
-#define GRPC_SYSTEM_SSL_ROOTS_FLAG "GRPC_SYSTEM_SSL_ROOTS_FLAG"
+#ifndef GRPC_USE_SYSTEM_SSL_ROOTS
+#define GRPC_USE_SYSTEM_SSL_ROOTS "GRPC_USE_SYSTEM_SSL_ROOTS"
 #endif
 
 /* --- Flag to specify custom directory for system certs testing --- */
-#ifndef GRPC_SYSTEM_ROOTS_DIR
-#define GRPC_SYSTEM_ROOTS_DIR "GRPC_SYSTEM_ROOTS_DIR"
+#ifndef GRPC_SYSTEM_SSL_ROOTS_DIR
+#define GRPC_SYSTEM_SSL_ROOTS_DIR "GRPC_SYSTEM_SSL_ROOTS_DIR"
 #endif
 
 /* -- Overridden default roots. -- */
@@ -1194,9 +1194,9 @@ size_t DefaultSslRootStore::num_cert_files_ = 5;
 size_t DefaultSslRootStore::num_cert_dirs_ = 5;
 const char* DefaultSslRootStore::platform;
 const char* DefaultSslRootStore::use_system_certs =
-    gpr_getenv(GRPC_SYSTEM_SSL_ROOTS_FLAG);
+    gpr_getenv(GRPC_USE_SYSTEM_SSL_ROOTS);
 const char* DefaultSslRootStore::use_custom_system_roots_dir =
-    gpr_getenv(GRPC_SYSTEM_ROOTS_DIR);
+    gpr_getenv(GRPC_SYSTEM_SSL_ROOTS_DIR);
 
 const tsi_ssl_root_certs_store* DefaultSslRootStore::GetRootStore() {
   InitRootStore();
@@ -1284,7 +1284,7 @@ const char* DefaultSslRootStore::GetSystemRootCerts() {
 const char* DefaultSslRootStore::FindValidCertsDirectory() {
   DIR* directory;
   char* custom_dir = nullptr;
-  if ((custom_dir = gpr_getenv(GRPC_SYSTEM_ROOTS_DIR)) != nullptr) {
+  if ((custom_dir = gpr_getenv(GRPC_SYSTEM_SSL_ROOTS_DIR)) != nullptr) {
     return custom_dir;
   }
   for (size_t i = 0; i < num_cert_dirs_; i++) {
@@ -1310,13 +1310,11 @@ char* DefaultSslRootStore::GetAbsoluteCertFilePath(
 }
 
 // Copy first cert into bundle, then concatenate subsequent certs
-char* DefaultSslRootStore::AddCertToBundle(char** bundle,
+void DefaultSslRootStore::AddCertToBundle(char** bundle,
     char* current_cert_string) {
   if (*bundle == nullptr) {
-    *bundle = static_cast<char*>(gpr_malloc(
-        strlen(current_cert_string) + 1));
-    strncpy(*bundle, current_cert_string,
-        strlen(current_cert_string) + 1);
+    *bundle = static_cast<char*>(gpr_malloc(strlen(current_cert_string) + 1));
+    strncpy(*bundle, current_cert_string, strlen(current_cert_string) + 1);
   } else {
     char* temp_string = static_cast<char*>(gpr_malloc(
         strlen(*bundle) + strlen(current_cert_string) + 1));
@@ -1326,7 +1324,6 @@ char* DefaultSslRootStore::AddCertToBundle(char** bundle,
     strncpy(*bundle, temp_string, strlen(temp_string) + 1);
     gpr_free(temp_string);
   }
-  return *bundle;
 }
 
 grpc_slice DefaultSslRootStore::CreateRootCertsBundle() {
@@ -1350,23 +1347,23 @@ grpc_slice DefaultSslRootStore::CreateRootCertsBundle() {
         char* file_entry_name = directory_entry->d_name;
         char* file_path = GetAbsoluteCertFilePath(found_cert_dir,
             file_entry_name);
-        cert_file = fopen(file_path, "rw");
-        if (cert_file != nullptr) {
+        if ((cert_file = fopen(file_path, "rw")) != nullptr) {
           GRPC_LOG_IF_ERROR(
               "load_file",
               grpc_load_file(file_path, 1, &single_cert_slice));
-          char* single_cert_string = grpc_slice_to_c_string(
-              single_cert_slice);
-          bundle_string = AddCertToBundle(&bundle_string, single_cert_string);
+          char* single_cert_string = grpc_slice_to_c_string(single_cert_slice);
+          AddCertToBundle(&bundle_string, single_cert_string);
           gpr_free(single_cert_string);
           fclose(cert_file);
         }
+        gpr_free(file_path);
       }
       closedir(ca_directory);
       strcat(bundle_string, "\0");
       if (bundle_string != nullptr) {
         bundle_slice = grpc_slice_from_copied_buffer(bundle_string,
             strlen(bundle_string));
+        gpr_free(bundle_string);
       }
     }
   }
@@ -1374,10 +1371,10 @@ grpc_slice DefaultSslRootStore::CreateRootCertsBundle() {
 }
 
 void DefaultSslRootStore::DetectPlatform() {
-#if defined __linux__
+#if defined GPR_LINUX
   // Linux environment (any GNU/Linux distribution)
   SetPlatform("linux");
-#elif defined _WIN32
+#elif defined GPR_WINDOWS
   // Windows environment (32 and 64 bit)
   SetPlatform("windows");
 #elif defined __APPLE__ && __MACH__

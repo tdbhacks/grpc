@@ -400,8 +400,8 @@ class TestDefaultSslRootStore : public DefaultSslRootStore {
     return GetAbsoluteCertFilePath(directory, filename);
   }
 
-  static char* AddCertToBundleForTesting(char** bundle, char* cert) {
-    return AddCertToBundle(bundle, cert);
+  static void AddCertToBundleForTesting(char** bundle, char* cert) {
+    AddCertToBundle(bundle, cert);
   }
 };
 

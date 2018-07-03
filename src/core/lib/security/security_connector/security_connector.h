@@ -44,7 +44,6 @@ typedef enum { GRPC_SECURITY_OK = 0, GRPC_SECURITY_ERROR } grpc_security_status;
 #define GRPC_FAKE_SECURITY_URL_SCHEME "http+fake_security"
 
 /* --- security_connector object. ---
-
     A security connector object represents away to configure the underlying
     transport security mechanism and check the resulting trusted peer.  */
 
@@ -108,7 +107,6 @@ grpc_security_connector* grpc_security_connector_find_in_args(
     const grpc_channel_args* args);
 
 /* --- channel_security_connector object. ---
-
     A channel security connector object represents a way to configure the
     underlying transport security mechanism on the client side.  */
 
@@ -155,7 +153,6 @@ void grpc_channel_security_connector_add_handshakers(
     grpc_handshake_manager* handshake_mgr);
 
 /* --- server_security_connector object. ---
-
     A server security connector object represents a way to configure the
     underlying transport security mechanism on the server side.  */
 
@@ -290,7 +287,9 @@ class DefaultSslRootStore {
 
   // Handles bundle creation by concatenating single cert files.
   // Protected for testing.
-  static char* AddCertToBundle(char** bundle, char* current_cert_string);
+  // Double pointer necessary (alternative to char* &bundle) to allow
+  // modification of bundle string
+  static void AddCertToBundle(char** bundle, char* current_cert_string);
 
   // Set and get the platform variable
   // Required for GetSystemRootCerts() tests
