@@ -59,10 +59,10 @@ class SecureChannelFixture : public ChannelDestroyerFixture {
   void Init() override {
 
     grpc_channel_credentials* channel_creds = grpc_ssl_credentials_create(
-        nullptr, nullptr, nullptr, nullptr);
+			 nullptr, nullptr, nullptr, nullptr);
 
     channel_ = grpc_secure_channel_create(channel_creds, "localhost:1234",
-                                          nullptr, nullptr);
+						nullptr, nullptr);
 
   }
 };
@@ -96,7 +96,7 @@ int main(int argc, char** argv) {
 
   // New feature disabled
   auto start = std::chrono::high_resolution_clock::now();
-  gpr_setenv("GRPC_USE_SYSTEM_SSL_ROOTS", "0");
+  if (gpr_getenv("GRPC_USE_SYSTEM_SSL_ROOTS") != nullptr) { unsetenv("GRPC_USE_SYSTEM_SSL_ROOTS"); }
   grpc_core::TestDefaultSslRootStore::ComputePemRootCertsForTesting();
   auto finish = std::chrono::high_resolution_clock::now();
   auto time_elapsed0 = std::chrono::duration_cast<std::chrono::nanoseconds>
