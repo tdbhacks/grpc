@@ -96,7 +96,9 @@ int main(int argc, char** argv) {
 
   // New feature disabled
   auto start = std::chrono::high_resolution_clock::now();
-  if (gpr_getenv("GRPC_USE_SYSTEM_SSL_ROOTS") != nullptr) { unsetenv("GRPC_USE_SYSTEM_SSL_ROOTS"); }
+  if (gpr_getenv("GRPC_USE_SYSTEM_SSL_ROOTS") != nullptr) {
+    unsetenv("GRPC_USE_SYSTEM_SSL_ROOTS");
+  }
   grpc_core::TestDefaultSslRootStore::ComputePemRootCertsForTesting();
   auto finish = std::chrono::high_resolution_clock::now();
   auto time_elapsed0 = std::chrono::duration_cast<std::chrono::nanoseconds>
