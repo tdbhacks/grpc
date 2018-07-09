@@ -860,6 +860,7 @@ grpc_cc_library(
         "src/core/lib/iomgr/exec_ctx.h",
         "src/core/lib/iomgr/executor.h",
         "src/core/lib/iomgr/gethostname.h",
+        "src/core/lib/iomgr/gevent_util.h",
         "src/core/lib/iomgr/iocp_windows.h",
         "src/core/lib/iomgr/iomgr.h",
         "src/core/lib/iomgr/iomgr_custom.h",
@@ -1028,6 +1029,7 @@ grpc_cc_library(
         "src/core/ext/filters/client_channel/backup_poller.cc",
         "src/core/ext/filters/client_channel/channel_connectivity.cc",
         "src/core/ext/filters/client_channel/client_channel.cc",
+        "src/core/ext/filters/client_channel/client_channel_channelz.cc",
         "src/core/ext/filters/client_channel/client_channel_factory.cc",
         "src/core/ext/filters/client_channel/client_channel_plugin.cc",
         "src/core/ext/filters/client_channel/connector.cc",
@@ -1050,6 +1052,7 @@ grpc_cc_library(
     hdrs = [
         "src/core/ext/filters/client_channel/backup_poller.h",
         "src/core/ext/filters/client_channel/client_channel.h",
+        "src/core/ext/filters/client_channel/client_channel_channelz.h",
         "src/core/ext/filters/client_channel/client_channel_factory.h",
         "src/core/ext/filters/client_channel/connector.h",
         "src/core/ext/filters/client_channel/http_connect_handshaker.h",

@@ -1190,6 +1190,7 @@ add_library(grpc
   src/core/ext/filters/client_channel/backup_poller.cc
   src/core/ext/filters/client_channel/channel_connectivity.cc
   src/core/ext/filters/client_channel/client_channel.cc
+  src/core/ext/filters/client_channel/client_channel_channelz.cc
   src/core/ext/filters/client_channel/client_channel_factory.cc
   src/core/ext/filters/client_channel/client_channel_plugin.cc
   src/core/ext/filters/client_channel/connector.cc
@@ -1526,6 +1527,7 @@ add_library(grpc_cronet
   src/core/ext/filters/client_channel/backup_poller.cc
   src/core/ext/filters/client_channel/channel_connectivity.cc
   src/core/ext/filters/client_channel/client_channel.cc
+  src/core/ext/filters/client_channel/client_channel_channelz.cc
   src/core/ext/filters/client_channel/client_channel_factory.cc
   src/core/ext/filters/client_channel/client_channel_plugin.cc
   src/core/ext/filters/client_channel/connector.cc
@@ -1884,6 +1886,7 @@ add_library(grpc_test_util
   src/core/ext/filters/client_channel/backup_poller.cc
   src/core/ext/filters/client_channel/channel_connectivity.cc
   src/core/ext/filters/client_channel/client_channel.cc
+  src/core/ext/filters/client_channel/client_channel_channelz.cc
   src/core/ext/filters/client_channel/client_channel_factory.cc
   src/core/ext/filters/client_channel/client_channel_plugin.cc
   src/core/ext/filters/client_channel/connector.cc
@@ -2191,6 +2194,7 @@ add_library(grpc_test_util_unsecure
   src/core/ext/filters/client_channel/backup_poller.cc
   src/core/ext/filters/client_channel/channel_connectivity.cc
   src/core/ext/filters/client_channel/client_channel.cc
+  src/core/ext/filters/client_channel/client_channel_channelz.cc
   src/core/ext/filters/client_channel/client_channel_factory.cc
   src/core/ext/filters/client_channel/client_channel_plugin.cc
   src/core/ext/filters/client_channel/connector.cc
@@ -2511,6 +2515,7 @@ add_library(grpc_unsecure
   src/core/ext/filters/client_channel/backup_poller.cc
   src/core/ext/filters/client_channel/channel_connectivity.cc
   src/core/ext/filters/client_channel/client_channel.cc
+  src/core/ext/filters/client_channel/client_channel_channelz.cc
   src/core/ext/filters/client_channel/client_channel_factory.cc
   src/core/ext/filters/client_channel/client_channel_plugin.cc
   src/core/ext/filters/client_channel/connector.cc
@@ -3318,6 +3323,7 @@ add_library(grpc++_cronet
   src/core/ext/filters/client_channel/backup_poller.cc
   src/core/ext/filters/client_channel/channel_connectivity.cc
   src/core/ext/filters/client_channel/client_channel.cc
+  src/core/ext/filters/client_channel/client_channel_channelz.cc
   src/core/ext/filters/client_channel/client_channel_factory.cc
   src/core/ext/filters/client_channel/client_channel_plugin.cc
   src/core/ext/filters/client_channel/connector.cc
