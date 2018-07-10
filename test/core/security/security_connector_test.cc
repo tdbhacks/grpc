@@ -464,17 +464,16 @@ static void test_default_ssl_roots(void) {
   gpr_free(roots_env_var_file_path);
 }
 
-static void test_system_ssl_roots() {
-  if (!grpc_core::TestDefaultSslRootStore::GetSystemRootsFlagForTesting()) {
-    gpr_setenv("GRPC_USE_SYSTEM_SSL_ROOTS", "true");
-  }
+static void test_system_cert_retrieval() {
   /* Test that the GetSystemRootCerts function returns a nullptr when the
      platform variable doesn't match one of the options. */
   grpc_core::TestDefaultSslRootStore::SetPlatformForTesting("test");
   const char* cert_path =
       grpc_core::TestDefaultSslRootStore::GetSystemRootCertsForTesting();
   GPR_ASSERT(cert_path == nullptr);
+}
 
+static void test_platform_detection() {
   /* Test that the DetectPlatform function correctly detects Linux, Windows,
      and OSX/MacOS */
   grpc_core::TestDefaultSslRootStore::DetectPlatformForTesting();
@@ -490,7 +489,9 @@ static void test_system_ssl_roots() {
   // MacOS / OSX environment
   GPR_ASSERT(strcmp(platform, "apple") == 0);
 #endif
+}
 
+static void test_absolute_cert_path() {
   /* Test GetAbsoluteCertFilePath */
   const char* directory = "nonexistent/test/directory";
   const char* filename = "doesnotexist.txt";
@@ -500,17 +501,23 @@ static void test_system_ssl_roots() {
           filename);
   GPR_ASSERT(strcmp(result_path,
                     "nonexistent/test/directory/doesnotexist.txt") == 0);
+  gpr_free(result_path);
+}
 
+static void test_cert_bundle_creation() {
+  if (!grpc_core::TestDefaultSslRootStore::GetSystemRootsFlagForTesting()) {
+    gpr_setenv("GRPC_USE_SYSTEM_SSL_ROOTS", "true");
+  }
   /* Test AddCertToBundle when bundle string is null (should copy) */
   char* bundle_ptr = nullptr;
-  char cert_str[4] = "123";
+  char cert_str[] = "123";
   char* cert_ptr = cert_str;
   grpc_core::TestDefaultSslRootStore::AddCertToBundleForTesting(&bundle_ptr,
                                                                 cert_ptr);
   GPR_ASSERT(strcmp(bundle_ptr, "123") == 0);
 
   /* Test AddCertToBundle when bundle string is not null (should concatenate) */
-  char bundle_str[8] = "Testing";
+  char bundle_str[] = "Testing";
   bundle_ptr = bundle_str;
   grpc_core::TestDefaultSslRootStore::AddCertToBundleForTesting(&bundle_ptr,
                                                                 cert_ptr);
@@ -533,7 +540,6 @@ static void test_system_ssl_roots() {
   /* Clean up */
   unsetenv("GRPC_USE_SYSTEM_SSL_ROOTS");
   unsetenv("GRPC_SYSTEM_SSL_ROOTS_DIR");
-  gpr_free(result_path);
   gpr_free(bundle_ptr);
 }
 
@@ -548,7 +554,10 @@ int main(int argc, char** argv) {
   test_cn_and_multiple_sans_and_others_ssl_peer_to_auth_context();
   test_ipv6_address_san();
   test_default_ssl_roots();
-  test_system_ssl_roots();
+  test_system_cert_retrieval();
+  test_platform_detection();
+  test_absolute_cert_path();
+  test_cert_bundle_creation();
 
   grpc_shutdown();
   return 0;
