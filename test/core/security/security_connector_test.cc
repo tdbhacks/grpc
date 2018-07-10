@@ -371,7 +371,7 @@ class TestDefaultSslRootStore : public DefaultSslRootStore {
     return ComputePemRootCerts();
   }
 
-  static const char* GetSystemRootCertsForTesting() {
+  static const char* GetSystemRootCertsFileForTesting() {
     return GetSystemRootCertsFile();
   }
 
@@ -464,20 +464,12 @@ static void test_default_ssl_roots(void) {
   gpr_free(roots_env_var_file_path);
 }
 
-<<<<<<< HEAD
 static void test_system_cert_retrieval() {
-  /* Test that the GetSystemRootCerts function returns a nullptr when the
-=======
-static void test_system_ssl_roots() {
-  if (!grpc_core::TestDefaultSslRootStore::GetSystemRootsFlagForTesting()) {
-    gpr_setenv("GRPC_USE_SYSTEM_SSL_ROOTS", "true");
-  }
   /* Test that the GetSystemRootCertsFile function returns a nullptr when the
->>>>>>> 6441fbeb0519643f1b1ce0e6e53001d961c5f35f
      platform variable doesn't match one of the options. */
   grpc_core::TestDefaultSslRootStore::SetPlatformForTesting("test");
   const char* cert_path =
-      grpc_core::TestDefaultSslRootStore::GetSystemRootCertsForTesting();
+      grpc_core::TestDefaultSslRootStore::GetSystemRootCertsFileForTesting();
   GPR_ASSERT(cert_path == nullptr);
 }
 
