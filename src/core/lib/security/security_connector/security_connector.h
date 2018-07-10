@@ -266,7 +266,7 @@ class DefaultSslRootStore {
 
   // Returns the path for os-specific root certificates.
   // Protected for testing.
-  static const char* GetSystemRootCerts();
+  static const char* GetSystemRootCertsFile();
 
   // Detect the os platform and set the platform variable to it.
   // Protected for testing.
