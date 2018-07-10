@@ -372,7 +372,7 @@ class TestDefaultSslRootStore : public DefaultSslRootStore {
   }
 
   static const char* GetSystemRootCertsForTesting() {
-    return GetSystemRootCerts();
+    return GetSystemRootCertsFile();
   }
 
   static void SetPlatformForTesting(const char* platform) {
@@ -468,7 +468,7 @@ static void test_system_ssl_roots() {
   if (!grpc_core::TestDefaultSslRootStore::GetSystemRootsFlagForTesting()) {
     gpr_setenv("GRPC_USE_SYSTEM_SSL_ROOTS", "true");
   }
-  /* Test that the GetSystemRootCerts function returns a nullptr when the
+  /* Test that the GetSystemRootCertsFile function returns a nullptr when the
      platform variable doesn't match one of the options. */
   grpc_core::TestDefaultSslRootStore::SetPlatformForTesting("test");
   const char* cert_path =
