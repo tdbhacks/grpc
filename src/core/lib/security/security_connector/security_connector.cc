@@ -1240,24 +1240,29 @@ grpc_slice DefaultSslRootStore::ComputePemRootCerts() {
       ovrd_res != GRPC_SSL_ROOTS_OVERRIDE_FAIL_PERMANENTLY) {
     const char* system_root_certs = nullptr;
     // Use system certs if flag is enabled.
-    if (use_system_certs != nullptr &&
-        use_custom_system_roots_dir == nullptr) {
+    if (use_system_certs != nullptr) {
       DetectPlatform();
-      system_root_certs = GetSystemRootCertsFile();
-      if (system_root_certs != nullptr) {
-        GRPC_LOG_IF_ERROR("load_file",
-                          grpc_load_file(system_root_certs, 1, &result));
-      } else if (strcmp(platform, "linux") == 0) {
+      // Check for user-specified system roots location
+      if (use_custom_system_roots_dir != nullptr) {
         result = CreateRootCertsBundle();
+      } else { // Find distribution-specific roots location
+        system_root_certs = GetSystemRootCertsFile();
+        if (system_root_certs != nullptr) {
+          GRPC_LOG_IF_ERROR("load_file",
+                          grpc_load_file(system_root_certs, 1, &result));
+        } else {
+          // Fallback to platform-specific alternative method
+          if (strcmp(platform, "linux") == 0) {
+            result = CreateRootCertsBundle();
+          }
+          //if platform=="windows" ...
+        }
       }
-    } else if (use_custom_system_roots_dir != nullptr) {
-      DetectPlatform();
-      result = CreateRootCertsBundle();
     }
+    // Fallback to certs manually shipped with gRPC
     if (use_system_certs == nullptr || GRPC_SLICE_IS_EMPTY(result)) {
-      // Fallback to certs manually shipped with gRPC
       GRPC_LOG_IF_ERROR("load_file",
-                        grpc_load_file(installed_roots_path, 1, &result));
+                      grpc_load_file(installed_roots_path, 1, &result));
     }
   }
   return result;
