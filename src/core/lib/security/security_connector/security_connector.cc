@@ -1250,12 +1250,11 @@ grpc_slice DefaultSslRootStore::ComputePemRootCerts() {
         if (system_root_certs != nullptr) {
           GRPC_LOG_IF_ERROR("load_file",
                           grpc_load_file(system_root_certs, 1, &result));
-        } else {
-          // Fallback to platform-specific alternative method
+        } else { // Fallback to platform-specific alternative method
           if (strcmp(platform, "linux") == 0) {
             result = CreateRootCertsBundle();
           }
-          //if platform=="windows" ...
+          // TODO: if platform=="windows" ...
         }
       }
     }
