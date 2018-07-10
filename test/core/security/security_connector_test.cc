@@ -337,6 +337,14 @@ static grpc_ssl_roots_override_result override_roots_success(
   return GRPC_SSL_ROOTS_OVERRIDE_OK;
 }
 
+// Return GRPC_SSL_ROOTS_OVERRIDE_FAIL so the ComputePemRootCerts function
+// executes the system roots branch for testing
+static grpc_ssl_roots_override_result override_roots_fail(
+    char** pem_root_certs) {
+  *pem_root_certs = gpr_strdup(roots_for_override_api);
+  return GRPC_SSL_ROOTS_OVERRIDE_FAIL;
+}
+
 static grpc_ssl_roots_override_result override_roots_permanent_failure(
     char** pem_root_certs) {
   return GRPC_SSL_ROOTS_OVERRIDE_FAIL_PERMANENTLY;
@@ -457,11 +465,19 @@ static void test_default_ssl_roots(void) {
       grpc_core::TestDefaultSslRootStore::GetRootStore();
   GPR_ASSERT(root_store == nullptr);
 
-  /* TODO: add tests for ComputePemRootCerts using system roots */
+  /* Set default roots env var to invalid value, activate system roots flag,
+     and make override fail to trigger system roots branch in
+     ComputePemRootCerts */
+  gpr_setenv(GRPC_DEFAULT_SSL_ROOTS_FILE_PATH_ENV_VAR, "");
+  gpr_setenv("GRPC_USE_SYSTEM_SSL_ROOTS", "true");
+  grpc_set_ssl_roots_override_callback(override_roots_fail);
+  roots = grpc_core::TestDefaultSslRootStore::ComputePemRootCertsForTesting();
+  GPR_ASSERT(!GRPC_SLICE_IS_EMPTY(roots));
 
   /* Cleanup. */
   remove(roots_env_var_file_path);
   gpr_free(roots_env_var_file_path);
+  gpr_setenv("GRPC_USE_SYSTEM_SSL_ROOTS", "");
 }
 
 static void test_system_cert_retrieval() {
