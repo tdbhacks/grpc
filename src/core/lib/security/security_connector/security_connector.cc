@@ -1236,15 +1236,15 @@ grpc_slice DefaultSslRootStore::ComputePemRootCerts() {
     // Use system certs if flag is enabled.
     if (use_system_certs != nullptr) {
       DetectPlatform();
-      // Check for user-specified system roots location
+      // Check for user-specified system roots location.
       if (use_custom_system_roots_dir != nullptr) {
         result = CreateRootCertsBundle();
-      } else {  // Find distribution-specific roots location
+      } else {  // Find distribution-specific roots location.
         system_root_certs = GetSystemRootCertsFile();
         if (system_root_certs != nullptr) {
           GRPC_LOG_IF_ERROR("load_file",
                             grpc_load_file(system_root_certs, 1, &result));
-        } else {  // Fallback to platform-specific alternative method
+        } else {  // Fallback to platform-specific alternative method.
           if (strcmp(platform, "linux") == 0) {
             result = CreateRootCertsBundle();
           }
@@ -1252,7 +1252,7 @@ grpc_slice DefaultSslRootStore::ComputePemRootCerts() {
         }
       }
     }
-    // Fallback to certs manually shipped with gRPC
+    // Fallback to certs manually shipped with gRPC.
     if (use_system_certs == nullptr || GRPC_SLICE_IS_EMPTY(result)) {
       GRPC_LOG_IF_ERROR("load_file",
                         grpc_load_file(installed_roots_path, 1, &result));
@@ -1272,14 +1272,14 @@ const char* DefaultSslRootStore::GetSystemRootCertsFile() {
       }
     }
   } /*else if (platform.compare("windows")) {
-    //TODO Export certs from Windows trust store (certutil?)
+    //TODO Export certs from Windows trust store (certutil?).
   } else if (platform.compare("apple") {
-    //TODO Export .pem file from keychain (using API?)
+    //TODO Export .pem file from keychain (using API?).
   }*/
   return nullptr;
 }
 
-// Search through list of Linux directories to find the right one
+// Search through list of Linux directories to find the right one.
 const char* DefaultSslRootStore::FindValidCertsDirectory() {
   DIR* directory;
   char* custom_dir = gpr_getenv(GRPC_SYSTEM_SSL_ROOTS_DIR);
@@ -1288,7 +1288,7 @@ const char* DefaultSslRootStore::FindValidCertsDirectory() {
   }
   for (size_t i = 0; i < num_cert_dirs_; i++) {
     directory = opendir(linux_cert_directories_[i]);
-    if (directory != nullptr) {  // If directory exists
+    if (directory != nullptr) {  // If directory exists.
       closedir(directory);
       return linux_cert_directories_[i];
     }
@@ -1296,7 +1296,7 @@ const char* DefaultSslRootStore::FindValidCertsDirectory() {
   return nullptr;
 }
 
-// Combine directory path with filename to get absolute path
+// Combine directory path with filename to get absolute path.
 char* DefaultSslRootStore::GetAbsoluteCertFilePath(
     const char* valid_cert_dir, const char* file_entry_name) {
   char* absolute_path = static_cast<char*>(
@@ -1307,7 +1307,7 @@ char* DefaultSslRootStore::GetAbsoluteCertFilePath(
   return absolute_path;
 }
 
-// Copy first cert into bundle, then concatenate subsequent certs
+// Copy first cert into bundle, then concatenate subsequent certs.
 void DefaultSslRootStore::AddCertToBundle(char** bundle,
                                           char* current_cert_string) {
   if (*bundle == nullptr) {
@@ -1343,7 +1343,7 @@ grpc_slice DefaultSslRootStore::CreateRootCertsBundle() {
     if (directory_entry->d_type == DT_DIR ||
         strcmp(directory_entry->d_name, ".") == 0 ||
         strcmp(directory_entry->d_name, "..") == 0) {
-      // no subdirectories
+      // no subdirectories.
       continue;
     }
     char* file_entry_name = directory_entry->d_name;
@@ -1370,13 +1370,13 @@ grpc_slice DefaultSslRootStore::CreateRootCertsBundle() {
 
 void DefaultSslRootStore::DetectPlatform() {
 #if defined GPR_LINUX
-  // Linux environment (any GNU/Linux distribution)
+  // Linux environment (any GNU/Linux distribution).
   SetPlatform("linux");
 #elif defined GPR_WINDOWS
-  // Windows environment (32 and 64 bit)
+  // Windows environment (32 and 64 bit).
   SetPlatform("windows");
 #elif defined __APPLE__ && __MACH__
-  // MacOS / OSX environment
+  // MacOS / OSX environment.
   SetPlatform("apple");
 #endif
 }
