@@ -99,6 +99,9 @@ int main(int argc, char** argv) {
   if (gpr_getenv("GRPC_USE_SYSTEM_SSL_ROOTS") != nullptr) {
     unsetenv("GRPC_USE_SYSTEM_SSL_ROOTS");
   }
+  if (gpr_getenv("GRPC_SYSTEM_SSL_ROOTS_DIR") != nullptr) {
+    unsetenv("GRPC_SYSTEM_SSL_ROOTS_DIR");
+  }
   for (int i=0; i<10; i++) {
     grpc_core::TestDefaultSslRootStore::ComputePemRootCertsForTesting();
   }
@@ -106,14 +109,26 @@ int main(int argc, char** argv) {
   auto time_elapsed0 = std::chrono::duration_cast<std::chrono::nanoseconds>
                                                     (finish-start).count();
 
-  // New feature enabled
+  // New feature using roots.pem
   start = std::chrono::high_resolution_clock::now();
   gpr_setenv("GRPC_USE_SYSTEM_SSL_ROOTS", "1");
+  gpr_setenv("GRPC_SYSTEM_SSL_ROOTS_DIR",
+              "./etc");
   for (int i=0; i<10; i++) {
     grpc_core::TestDefaultSslRootStore::ComputePemRootCertsForTesting();
   }
   finish = std::chrono::high_resolution_clock::now();
   auto time_elapsed1 = std::chrono::duration_cast<std::chrono::nanoseconds>
+                                                    (finish-start).count();
+
+  // New feature enabled
+  start = std::chrono::high_resolution_clock::now();
+  unsetenv("GRPC_SYSTEM_SSL_ROOTS_DIR");
+  for (int i=0; i<10; i++) {
+    grpc_core::TestDefaultSslRootStore::ComputePemRootCertsForTesting();
+  }
+  finish = std::chrono::high_resolution_clock::now();
+  auto time_elapsed2 = std::chrono::duration_cast<std::chrono::nanoseconds>
                                                     (finish-start).count();
 
   /* To use env var value set through "export" in shell:
@@ -128,7 +143,12 @@ int main(int argc, char** argv) {
 
   std::cout << "Root certs computation took: "
           << time_elapsed1/10.0
-          << " nanoseconds, with the feature enabled"
+          << " nanoseconds, with the feature using roots.pem"
+          << "\n";
+
+  std::cout << "Root certs computation took: "
+          << time_elapsed2/10.0
+          << " nanoseconds, with the feature enabled (uses system roots)"
           << "\n\n";
   return 0;
 }
