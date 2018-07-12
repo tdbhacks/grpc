@@ -1187,11 +1187,7 @@ size_t DefaultSslRootStore::num_cert_files_ =
     sizeof(DefaultSslRootStore::linux_cert_files_);
 size_t DefaultSslRootStore::num_cert_dirs_ =
     sizeof(DefaultSslRootStore::linux_cert_directories_);
-const char* DefaultSslRootStore::platform;
-const char* DefaultSslRootStore::use_system_certs_ =
-    gpr_getenv(GRPC_USE_SYSTEM_SSL_ROOTS);
-const char* DefaultSslRootStore::use_custom_system_roots_dir_ =
-    gpr_getenv(GRPC_SYSTEM_SSL_ROOTS_DIR);
+const char* DefaultSslRootStore::platform_;
 
 const tsi_ssl_root_certs_store* DefaultSslRootStore::GetRootStore() {
   InitRootStore();
@@ -1208,8 +1204,10 @@ const char* DefaultSslRootStore::GetPemRootCerts() {
 
 grpc_slice DefaultSslRootStore::ComputePemRootCerts() {
   grpc_slice result = grpc_empty_slice();
-  use_system_certs_ = gpr_getenv(GRPC_USE_SYSTEM_SSL_ROOTS);
-  use_custom_system_roots_dir_ = gpr_getenv(GRPC_SYSTEM_SSL_ROOTS_DIR);
+  const char* use_system_certs =
+    gpr_getenv(GRPC_USE_SYSTEM_SSL_ROOTS);
+  const char* use_custom_system_roots_dir =
+    gpr_getenv(GRPC_SYSTEM_SSL_ROOTS_DIR);
   // First try to load the roots from the environment.
   char* default_root_certs_path =
       gpr_getenv(GRPC_DEFAULT_SSL_ROOTS_FILE_PATH_ENV_VAR);
@@ -1232,10 +1230,10 @@ grpc_slice DefaultSslRootStore::ComputePemRootCerts() {
     gpr_free(pem_root_certs);
   }
   // Try system roots if flag is enabled.
-  if (GRPC_SLICE_IS_EMPTY(result) && use_system_certs_ != nullptr) {
+  if (GRPC_SLICE_IS_EMPTY(result) && use_system_certs != nullptr) {
     DetectPlatform();
     // Check for user-specified system roots location.
-    if (use_custom_system_roots_dir_ != nullptr) {
+    if (use_custom_system_roots_dir != nullptr) {
       result = CreateRootCertsBundle();
     } else {  // Find distribution-specific roots location.
       const char* system_root_certs = GetSystemRootCertsFile();
@@ -1243,7 +1241,7 @@ grpc_slice DefaultSslRootStore::ComputePemRootCerts() {
         GRPC_LOG_IF_ERROR("load_file",
                           grpc_load_file(system_root_certs, 1, &result));
       } else {  // Fallback to Linux-specific alternative method.
-        if (strcmp(platform, "linux") == 0) {
+        if (strcmp(platform_, "linux") == 0) {
           result = CreateRootCertsBundle();
         }
       }
@@ -1259,7 +1257,7 @@ grpc_slice DefaultSslRootStore::ComputePemRootCerts() {
 }
 
 const char* DefaultSslRootStore::GetSystemRootCertsFile() {
-  if (strcmp(platform, "linux") == 0) {
+  if (strcmp(platform_, "linux") == 0) {
     FILE* cert_file;
     for (size_t i = 0; i < num_cert_files_; i++) {
       cert_file = fopen(linux_cert_files_[i], "r");
@@ -1279,8 +1277,9 @@ const char* DefaultSslRootStore::GetSystemRootCertsFile() {
 // Search through list of Linux directories to find the right one.
 const char* DefaultSslRootStore::GetValidCertsDirectory() {
   DIR* directory;
-  if (use_custom_system_roots_dir_ != nullptr) {
-    return use_custom_system_roots_dir_;
+  const char* custom_dir = gpr_getenv(GRPC_SYSTEM_SSL_ROOTS_DIR);
+  if (custom_dir != nullptr) {
+    return custom_dir;
   }
   for (size_t i = 0; i < num_cert_dirs_; i++) {
     directory = opendir(linux_cert_directories_[i]);
