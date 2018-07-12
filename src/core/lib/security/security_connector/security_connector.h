@@ -292,7 +292,8 @@ class DefaultSslRootStore {
   // Protected for testing.
   // Double pointer necessary (alternative to char* &bundle) to allow
   // modification of bundle string
-  static void AddCertToBundle(char** bundle, char* current_cert_string);
+  static void AddCertToBundle(char** bundle,
+                              const char* current_cert_string);
 
   // Set and get the platform variable
   // Required for GetSystemRootCerts() tests
