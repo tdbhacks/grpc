@@ -290,8 +290,10 @@ class DefaultSslRootStore {
 
   // Handles bundle creation by concatenating single cert files.
   // Protected for testing.
-  // Double pointer necessary (alternative to char* &bundle) to allow
-  // modification of bundle string
+  // - bundle is a pointer to the string containing the list of certificates to
+  // be returned from CreateRootCertsBundle.
+  // - current_cert_string is the string containing the certificate pending
+  // concatenation to the certs bundle.
   static void AddCertToBundle(char** bundle,
                               const char* current_cert_string);
 
@@ -317,18 +319,18 @@ class DefaultSslRootStore {
   // Default PEM root certificates.
   static grpc_slice default_pem_root_certs_;
 
-  // List of possible linux certificate files and directories
+  // List of possible Linux certificate files and directories.
   static const char* linux_cert_files_[];
   static const char* linux_cert_directories_[];
   static size_t num_cert_files_, num_cert_dirs_;
 
-  // Flag to enable/disable system root certificates feature
+  // Flag to enable/disable system root certificates feature.
   static const char* use_system_certs;
 
-  // Flag to specify custom directory that contains the system root certs
+  // Flag to specify custom directory that contains the system root certs.
   static const char* use_custom_system_roots_dir;
 
-  // Variable to hold the name of the os
+  // Variable to hold the name of the OS.
   static const char* platform;
 };
 
