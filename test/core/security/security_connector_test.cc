@@ -391,10 +391,6 @@ class TestDefaultSslRootStore : public DefaultSslRootStore {
 
   static void DetectPlatformForTesting() { DetectPlatform(); }
 
-  static const char* GetSystemRootsFlagForTesting() {
-    return GetSystemRootsFlag();
-  }
-
   static grpc_slice CreateRootCertsBundleForTesting() {
     return CreateRootCertsBundle();
   }
@@ -516,9 +512,7 @@ static void test_absolute_cert_path() {
 }
 
 static void test_cert_bundle_creation() {
-  if (!grpc_core::TestDefaultSslRootStore::GetSystemRootsFlagForTesting()) {
     gpr_setenv("GRPC_USE_SYSTEM_SSL_ROOTS", "true");
-  }
   /* Test AddCertToBundle when bundle string is null (should copy). */
   char* bundle_ptr = nullptr;
   char cert_str[] = "123";

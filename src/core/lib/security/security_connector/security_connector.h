@@ -272,15 +272,14 @@ class DefaultSslRootStore {
   // Protected for testing.
   static void DetectPlatform();
 
-  // Creates a bundle file from all the existing system certificates.
-  // Returns the path to the bundle file.
-  // Protected for testing.
+  // Creates a bundle slice containing the contents of all certificate files in
+  // a directory. Returns such slice. Protected for testing.
   static grpc_slice CreateRootCertsBundle();
 
   // Looks for a valid directory to load certificates from.
   // Returns such path or nullptr otherwise.
   // Protected for testing.
-  static const char* FindValidCertsDirectory();
+  static const char* GetValidCertsDirectory();
 
   // Gets the absolute file path needed to load a certificate file.
   // Returns such path.
@@ -294,14 +293,12 @@ class DefaultSslRootStore {
   // be returned from CreateRootCertsBundle.
   // - current_cert_string is the string containing the certificate pending
   // concatenation to the certs bundle.
-  static void AddCertToBundle(char** bundle,
-                              const char* current_cert_string);
+  static void AddCertToBundle(char** bundle, const char* current_cert_string);
 
-  // Set and get the platform variable
-  // Required for GetSystemRootCerts() tests
-  static void SetPlatform(const char* pform) { platform = pform; }
-  static const char* GetPlatform() { return platform; }
-  static const char* GetSystemRootsFlag() { return use_system_certs; }
+  // Set and get the platform variable.
+  // Required for GetSystemRootCerts() tests.
+  static void SetPlatform(const char* pform) { platform_ = pform; }
+  static const char* GetPlatform() { return platform_; }
 
  private:
   // Construct me not!
@@ -324,14 +321,8 @@ class DefaultSslRootStore {
   static const char* linux_cert_directories_[];
   static size_t num_cert_files_, num_cert_dirs_;
 
-  // Flag to enable/disable system root certificates feature.
-  static const char* use_system_certs;
-
-  // Flag to specify custom directory that contains the system root certs.
-  static const char* use_custom_system_roots_dir;
-
   // Variable to hold the name of the OS.
-  static const char* platform;
+  static const char* platform_;
 };
 
 }  // namespace grpc_core
