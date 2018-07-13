@@ -383,11 +383,11 @@ class TestDefaultSslRootStore : public DefaultSslRootStore {
     return GetSystemRootCertsFile();
   }
 
-  static void SetPlatformForTesting(const char* platform) {
+  static void SetPlatformForTesting(grpc_platform platform) {
     SetPlatform(platform);
   }
 
-  static const char* GetPlatformForTesting() { return GetPlatform(); }
+  static grpc_platform GetPlatformForTesting() { return GetPlatform(); }
 
   static void DetectPlatformForTesting() { DetectPlatform(); }
 
@@ -475,7 +475,7 @@ static void test_default_ssl_roots(void) {
 /* Test that the GetSystemRootCertsFile function returns a nullptr when the
    platform variable doesn't match one of the options. */
 static void test_system_cert_retrieval() {
-  grpc_core::TestDefaultSslRootStore::SetPlatformForTesting("test");
+  grpc_core::TestDefaultSslRootStore::SetPlatformForTesting(PLATFORM_TEST);
   const char* cert_path =
       grpc_core::TestDefaultSslRootStore::GetSystemRootCertsFileForTesting();
   GPR_ASSERT(cert_path == nullptr);
@@ -485,17 +485,17 @@ static void test_system_cert_retrieval() {
    and OSX/MacOS. */
 static void test_platform_detection() {
   grpc_core::TestDefaultSslRootStore::DetectPlatformForTesting();
-  const char* platform =
+  grpc_platform platform =
       grpc_core::TestDefaultSslRootStore::GetPlatformForTesting();
 #if defined GPR_LINUX
   // Linux environment (any GNU/Linux distribution).
-  GPR_ASSERT(strcmp(platform, "linux") == 0);
+  GPR_ASSERT(platform == PLATFORM_LINUX);
 #elif defined GPR_WINDOWS
   // Windows environment (32 and 64 bit).
-  GPR_ASSERT(strcmp(platform, "windows") == 0);
+  GPR_ASSERT(platform == PLATFORM_WINDOWS);
 #elif defined __APPLE__ && __MACH__
   // MacOS / OSX environment.
-  GPR_ASSERT(strcmp(platform, "apple") == 0);
+  GPR_ASSERT(platform == PLATFORM_APPLE);
 #endif
 }
 
@@ -512,7 +512,7 @@ static void test_absolute_cert_path() {
 }
 
 static void test_cert_bundle_creation() {
-    gpr_setenv("GRPC_USE_SYSTEM_SSL_ROOTS", "true");
+  gpr_setenv("GRPC_USE_SYSTEM_SSL_ROOTS", "true");
   /* Test AddCertToBundle when bundle string is null (should copy). */
   char* bundle_ptr = nullptr;
   char cert_str[] = "123";
