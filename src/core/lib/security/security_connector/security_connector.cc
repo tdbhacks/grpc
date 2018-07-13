@@ -1304,16 +1304,19 @@ char* DefaultSslRootStore::GetAbsoluteCertFilePath(
 // Copy first cert into bundle, then concatenate subsequent certs.
 void DefaultSslRootStore::AddCertToBundle(char** bundle,
                                           const char* current_cert_string) {
+  size_t current_cert_len = strlen(current_cert_string);
   if (*bundle == nullptr) {
-    *bundle = static_cast<char*>(gpr_malloc(strlen(current_cert_string) + 1));
-    strncpy(*bundle, current_cert_string, strlen(current_cert_string) + 1);
+    *bundle = static_cast<char*>(gpr_malloc(current_cert_len + 1));
+    strncpy(*bundle, current_cert_string, current_cert_len + 1);
   } else {
+    size_t bundle_len = strlen(*bundle);
     char* temp_string = static_cast<char*>(
-        gpr_malloc(strlen(*bundle) + strlen(current_cert_string) + 1));
-    strncpy(temp_string, *bundle, strlen(*bundle));
+        gpr_malloc(bundle_len + current_cert_len + 1));
+    strncpy(temp_string, *bundle, bundle_len);
     strcat(temp_string, current_cert_string);
-    *bundle = static_cast<char*>(gpr_malloc(strlen(temp_string) + 1));
-    strncpy(*bundle, temp_string, strlen(temp_string) + 1);
+    size_t temp_string_len = bundle_len + current_cert_len + 1;
+    *bundle = static_cast<char*>(gpr_malloc(temp_string_len + 1));
+    strncpy(*bundle, temp_string, temp_string_len + 1);
     gpr_free(temp_string);
   }
 }
