@@ -37,6 +37,12 @@ extern grpc_core::DebugOnlyTraceFlag grpc_trace_security_connector_refcount;
 /* --- status enum. --- */
 
 typedef enum { GRPC_SECURITY_OK = 0, GRPC_SECURITY_ERROR } grpc_security_status;
+typedef enum {
+  PLATFORM_LINUX,
+  PLATFORM_APPLE,
+  PLATFORM_WINDOWS,
+  PLATFORM_TEST
+} grpc_platform;
 
 /* --- URL schemes. --- */
 
@@ -297,8 +303,8 @@ class DefaultSslRootStore {
 
   // Set and get the platform variable.
   // Required for GetSystemRootCerts() tests.
-  static void SetPlatform(const char* pform) { platform_ = pform; }
-  static const char* GetPlatform() { return platform_; }
+  static void SetPlatform(grpc_platform pform) { platform_ = pform; }
+  static grpc_platform GetPlatform() { return platform_; }
 
  private:
   // Construct me not!
@@ -322,7 +328,7 @@ class DefaultSslRootStore {
   static size_t num_cert_files_, num_cert_dirs_;
 
   // Variable to hold the name of the OS.
-  static const char* platform_;
+  static grpc_platform platform_;
 };
 
 }  // namespace grpc_core

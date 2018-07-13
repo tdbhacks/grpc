@@ -1187,7 +1187,7 @@ size_t DefaultSslRootStore::num_cert_files_ =
     sizeof(DefaultSslRootStore::linux_cert_files_);
 size_t DefaultSslRootStore::num_cert_dirs_ =
     sizeof(DefaultSslRootStore::linux_cert_directories_);
-const char* DefaultSslRootStore::platform_;
+grpc_platform DefaultSslRootStore::platform_;
 
 const tsi_ssl_root_certs_store* DefaultSslRootStore::GetRootStore() {
   InitRootStore();
@@ -1204,10 +1204,9 @@ const char* DefaultSslRootStore::GetPemRootCerts() {
 
 grpc_slice DefaultSslRootStore::ComputePemRootCerts() {
   grpc_slice result = grpc_empty_slice();
-  const char* use_system_certs =
-    gpr_getenv(GRPC_USE_SYSTEM_SSL_ROOTS);
+  const char* use_system_certs = gpr_getenv(GRPC_USE_SYSTEM_SSL_ROOTS);
   const char* use_custom_system_roots_dir =
-    gpr_getenv(GRPC_SYSTEM_SSL_ROOTS_DIR);
+      gpr_getenv(GRPC_SYSTEM_SSL_ROOTS_DIR);
   // First try to load the roots from the environment.
   char* default_root_certs_path =
       gpr_getenv(GRPC_DEFAULT_SSL_ROOTS_FILE_PATH_ENV_VAR);
@@ -1241,7 +1240,7 @@ grpc_slice DefaultSslRootStore::ComputePemRootCerts() {
         GRPC_LOG_IF_ERROR("load_file",
                           grpc_load_file(system_root_certs, 1, &result));
       } else {  // Fallback to Linux-specific alternative method.
-        if (strcmp(platform_, "linux") == 0) {
+        if (platform_ == PLATFORM_LINUX) {
           result = CreateRootCertsBundle();
         }
       }
@@ -1257,7 +1256,7 @@ grpc_slice DefaultSslRootStore::ComputePemRootCerts() {
 }
 
 const char* DefaultSslRootStore::GetSystemRootCertsFile() {
-  if (strcmp(platform_, "linux") == 0) {
+  if (platform_ == PLATFORM_LINUX) {
     FILE* cert_file;
     for (size_t i = 0; i < num_cert_files_; i++) {
       cert_file = fopen(linux_cert_files_[i], "r");
@@ -1366,13 +1365,13 @@ grpc_slice DefaultSslRootStore::CreateRootCertsBundle() {
 void DefaultSslRootStore::DetectPlatform() {
 #if defined GPR_LINUX
   // Linux environment (any GNU/Linux distribution).
-  SetPlatform("linux");
+  SetPlatform(PLATFORM_LINUX);
 #elif defined GPR_WINDOWS
   // Windows environment (32 and 64 bit).
-  SetPlatform("windows");
+  SetPlatform(PLATFORM_WINDOWS);
 #elif defined __APPLE__ && __MACH__
   // MacOS / OSX environment.
-  SetPlatform("apple");
+  SetPlatform(PLATFORM_APPLE);
 #endif
 }
 
