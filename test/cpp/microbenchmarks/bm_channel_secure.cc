@@ -81,6 +81,7 @@ static void BM_SecureChannelCreateDestroy(benchmark::State& state) {
 }
 BENCHMARK_TEMPLATE(BM_SecureChannelCreateDestroy, SecureChannelFixture)
     ->Range(0, 512);
+;
 
 // Some distros have RunSpecifiedBenchmarks under the benchmark namespace,
 // and others do not. This allows us to support both modes.
