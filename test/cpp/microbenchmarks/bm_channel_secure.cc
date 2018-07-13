@@ -19,12 +19,12 @@
 /* Benchmark channel */
 
 #include <chrono>
-#include <grpc/grpc_security.h>
-#include "src/core/lib/security/credentials/ssl/ssl_credentials.h"
-#include "src/core/lib/gpr/env.h"
-
 #include <benchmark/benchmark.h>
 #include <grpc/grpc.h>
+#include <grpc/grpc_security.h>
+
+#include "src/core/lib/gpr/env.h"
+#include "src/core/lib/security/credentials/ssl/ssl_credentials.h"
 #include "test/cpp/microbenchmarks/helpers.h"
 #include "test/cpp/util/test_config.h"
 
@@ -59,11 +59,10 @@ class SecureChannelFixture : public ChannelDestroyerFixture {
   void Init() override {
 
     grpc_channel_credentials* channel_creds = grpc_ssl_credentials_create(
-			 nullptr, nullptr, nullptr, nullptr);
+            nullptr, nullptr, nullptr, nullptr);
 
     channel_ = grpc_secure_channel_create(channel_creds, "localhost:1234",
-						nullptr, nullptr);
-
+            nullptr, nullptr);
   }
 };
 
@@ -82,7 +81,6 @@ static void BM_SecureChannelCreateDestroy(benchmark::State& state) {
 }
 BENCHMARK_TEMPLATE(BM_SecureChannelCreateDestroy, SecureChannelFixture)
     ->Range(0, 512);
-;
 
 // Some distros have RunSpecifiedBenchmarks under the benchmark namespace,
 // and others do not. This allows us to support both modes.
@@ -94,7 +92,11 @@ int main(int argc, char** argv) {
   ::benchmark::Initialize(&argc, argv);
   ::grpc::testing::InitTest(&argc, &argv, false);
 
-  // New feature disabled
+  // total_iteractions is the number of times we compute the system roots.
+  // This value is then used to calculate the average runtime.
+  const int total_iterations = 1000;
+
+  // System roots feature disabled.
   auto start = std::chrono::high_resolution_clock::now();
   if (gpr_getenv("GRPC_USE_SYSTEM_SSL_ROOTS") != nullptr) {
     unsetenv("GRPC_USE_SYSTEM_SSL_ROOTS");
@@ -102,29 +104,28 @@ int main(int argc, char** argv) {
   if (gpr_getenv("GRPC_SYSTEM_SSL_ROOTS_DIR") != nullptr) {
     unsetenv("GRPC_SYSTEM_SSL_ROOTS_DIR");
   }
-  for (int i=0; i<10; i++) {
+  for (int i=0; i<total_iterations; i++) {
     grpc_core::TestDefaultSslRootStore::ComputePemRootCertsForTesting();
   }
   auto finish = std::chrono::high_resolution_clock::now();
   auto time_elapsed0 = std::chrono::duration_cast<std::chrono::nanoseconds>
                                                     (finish-start).count();
 
-  // New feature using roots.pem
+  // System roots feature using roots.pem.
   start = std::chrono::high_resolution_clock::now();
   gpr_setenv("GRPC_USE_SYSTEM_SSL_ROOTS", "1");
-  gpr_setenv("GRPC_SYSTEM_SSL_ROOTS_DIR",
-              "./etc");
-  for (int i=0; i<10; i++) {
+  gpr_setenv("GRPC_SYSTEM_SSL_ROOTS_DIR", "./etc");
+  for (int i=0; i<total_iterations; i++) {
     grpc_core::TestDefaultSslRootStore::ComputePemRootCertsForTesting();
   }
   finish = std::chrono::high_resolution_clock::now();
   auto time_elapsed1 = std::chrono::duration_cast<std::chrono::nanoseconds>
                                                     (finish-start).count();
 
-  // New feature enabled
+  // System feature enabled.
   start = std::chrono::high_resolution_clock::now();
   unsetenv("GRPC_SYSTEM_SSL_ROOTS_DIR");
-  for (int i=0; i<10; i++) {
+  for (int i=0; i<total_iterations; i++) {
     grpc_core::TestDefaultSslRootStore::ComputePemRootCertsForTesting();
   }
   finish = std::chrono::high_resolution_clock::now();
@@ -137,17 +138,17 @@ int main(int argc, char** argv) {
   benchmark::RunTheBenchmarksNamespaced();
 
   std::cout << "\nRoot certs computation took: "
-          << time_elapsed0/10.0
+          << time_elapsed0/total_iterations
           << " nanoseconds, with the feature disabled"
           << "\n";
 
   std::cout << "Root certs computation took: "
-          << time_elapsed1/10.0
+          << time_elapsed1/total_iterations
           << " nanoseconds, with the feature using roots.pem"
           << "\n";
 
   std::cout << "Root certs computation took: "
-          << time_elapsed2/10.0
+          << time_elapsed2/total_iterations
           << " nanoseconds, with the feature enabled (uses system roots)"
           << "\n\n";
   return 0;
