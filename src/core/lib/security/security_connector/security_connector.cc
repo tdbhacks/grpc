@@ -1309,9 +1309,12 @@ void DefaultSslRootStore::AddCertToBundle(char** bundle,
     *bundle = static_cast<char*>(gpr_malloc(current_cert_len + 1));
     strncpy(*bundle, current_cert_string, current_cert_len + 1);
   } else {
+    // WARNING: this code is inconsistent and results in flaky testing.
+    // TODO: switch to std::string implementation ASAP to avoid memory
+    // allocation inconsistencies.
     size_t bundle_len = strlen(*bundle);
-    char* temp_string = static_cast<char*>(
-        gpr_malloc(bundle_len + current_cert_len + 1));
+    char* temp_string =
+        static_cast<char*>(gpr_malloc(bundle_len + current_cert_len + 1));
     strncpy(temp_string, *bundle, bundle_len);
     strcat(temp_string, current_cert_string);
     size_t temp_string_len = bundle_len + current_cert_len + 1;
