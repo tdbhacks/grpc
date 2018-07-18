@@ -30,6 +30,9 @@
 
 auto& force_library_initialization = Library::get();
 
+// Total number of initial channels used for benchmarking.
+const size_t number_of_channels = 512;
+
 class ChannelDestroyerFixture {
  public:
   ChannelDestroyerFixture() {}
@@ -74,7 +77,7 @@ template <class Fixture>
 static void BM_SecureChannelCreateDestroy(benchmark::State& state) {
   // In order to test if channel creation time is affected by the number of
   // already existing channels, we create some initial channels here.
-  Fixture initial_channels[512];
+  Fixture initial_channels[number_of_channels];
   for (int i = 0; i < state.range(0); i++) {
     initial_channels[i].Init();
   }
@@ -84,8 +87,7 @@ static void BM_SecureChannelCreateDestroy(benchmark::State& state) {
   }
 }
 BENCHMARK_TEMPLATE(BM_SecureChannelCreateDestroy, SecureChannelFixture)
-    ->Range(0, 512);
-;
+    ->Range(0, number_of_channels);
 
 // Some distros have RunSpecifiedBenchmarks under the benchmark namespace,
 // and others do not. This allows us to support both modes.
@@ -97,7 +99,7 @@ int main(int argc, char** argv) {
   ::benchmark::Initialize(&argc, argv);
   ::grpc::testing::InitTest(&argc, &argv, false);
 
-  // total_iteractions is the number of times we compute the system roots.
+  // Total_iteractions is the number of times we compute the system roots.
   // This value is then used to calculate the average runtime.
   const int total_iterations = 1000;
 
