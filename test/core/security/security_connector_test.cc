@@ -527,7 +527,6 @@ static void test_cert_bundle_creation() {
   bundle_ptr = bundle_str;
   grpc_core::TestDefaultSslRootStore::AddCertToBundleForTesting(&bundle_ptr,
                                                                 cert_ptr);
-  strcat(bundle_ptr, "\0");
   GPR_ASSERT(strcmp(bundle_ptr, "Testing123") == 0);
 
   /* Test that CreateRootCertsBundle returns a correct slice. */
@@ -547,7 +546,6 @@ static void test_cert_bundle_creation() {
   /* Cleanup. */
   unsetenv("GRPC_USE_SYSTEM_SSL_ROOTS");
   unsetenv("GRPC_SYSTEM_SSL_ROOTS_DIR");
-  gpr_free(bundle_ptr);
 }
 
 int main(int argc, char** argv) {

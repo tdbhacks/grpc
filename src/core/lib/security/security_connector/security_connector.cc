@@ -1183,10 +1183,6 @@ const char* DefaultSslRootStore::linux_cert_files_[] = {
 const char* DefaultSslRootStore::linux_cert_directories_[] = {
     "/etc/ssl/certs", "/system/etc/security/cacerts", "/usr/local/share/certs",
     "/etc/pki/tls/certs", "/etc/openssl/certs"};
-size_t DefaultSslRootStore::num_cert_files_ =
-    sizeof(DefaultSslRootStore::linux_cert_files_);
-size_t DefaultSslRootStore::num_cert_dirs_ =
-    sizeof(DefaultSslRootStore::linux_cert_directories_);
 grpc_platform DefaultSslRootStore::platform_;
 
 const tsi_ssl_root_certs_store* DefaultSslRootStore::GetRootStore() {
@@ -1256,20 +1252,28 @@ grpc_slice DefaultSslRootStore::ComputePemRootCerts() {
 }
 
 const char* DefaultSslRootStore::GetSystemRootCertsFile() {
-  if (platform_ == PLATFORM_LINUX) {
-    FILE* cert_file;
-    for (size_t i = 0; i < num_cert_files_; i++) {
-      cert_file = fopen(linux_cert_files_[i], "r");
-      if (cert_file != nullptr) {
-        fclose(cert_file);
-        return linux_cert_files_[i];
+  switch (platform_) {
+    case PLATFORM_LINUX:
+      {
+        FILE* cert_file;
+        size_t num_cert_files_ = sizeof(DefaultSslRootStore::linux_cert_files_);
+        for (size_t i = 0; i < num_cert_files_; i++) {
+          cert_file = fopen(linux_cert_files_[i], "r");
+          if (cert_file != nullptr) {
+            fclose(cert_file);
+            return linux_cert_files_[i];
+          }
+        }
       }
-    }
-  } /*else if (platform.compare("windows")) {
-    //TODO Export certs from Windows trust store (certutil?).
-  } else if (platform.compare("apple") {
-    //TODO Export .pem file from keychain (using API?).
-  }*/
+      return nullptr;
+    case PLATFORM_WINDOWS:
+      // TODO: implement Windows-specific method (certutil?).
+      break;
+    case PLATFORM_APPLE:
+      // TODO: implement Apple-specific method (keychain API?).
+      break;
+    default: break;
+  }
   return nullptr;
 }
 
@@ -1280,6 +1284,7 @@ const char* DefaultSslRootStore::GetValidCertsDirectory() {
   if (custom_dir != nullptr) {
     return custom_dir;
   }
+  size_t num_cert_dirs_ = sizeof(DefaultSslRootStore::linux_cert_directories_);
   for (size_t i = 0; i < num_cert_dirs_; i++) {
     directory = opendir(linux_cert_directories_[i]);
     if (directory != nullptr) {  // If directory exists.
@@ -1293,6 +1298,9 @@ const char* DefaultSslRootStore::GetValidCertsDirectory() {
 // Combine directory path with filename to get absolute path.
 char* DefaultSslRootStore::GetAbsoluteCertFilePath(
     const char* valid_cert_dir, const char* file_entry_name) {
+  if (valid_cert_dir == nullptr || file_entry_name == nullptr) {
+    return nullptr;
+  }
   char* absolute_path = static_cast<char*>(
       gpr_malloc(strlen(valid_cert_dir) + strlen(file_entry_name) + 2));
   strncpy(absolute_path, valid_cert_dir, strlen(valid_cert_dir) + 1);
@@ -1304,23 +1312,17 @@ char* DefaultSslRootStore::GetAbsoluteCertFilePath(
 // Copy first cert into bundle, then concatenate subsequent certs.
 void DefaultSslRootStore::AddCertToBundle(char** bundle,
                                           const char* current_cert_string) {
+  // WARNING: this code is inconsistent and results in flaky testing.
+  // TODO: switch to std::string implementation ASAP to avoid memory
+  // allocation inconsistencies.
   size_t current_cert_len = strlen(current_cert_string);
-  if (*bundle == nullptr) {
-    *bundle = static_cast<char*>(gpr_malloc(current_cert_len + 1));
-    strncpy(*bundle, current_cert_string, current_cert_len + 1);
-  } else {
-    // WARNING: this code is inconsistent and results in flaky testing.
-    // TODO: switch to std::string implementation ASAP to avoid memory
-    // allocation inconsistencies.
+  if (*bundle != nullptr) {
     size_t bundle_len = strlen(*bundle);
-    char* temp_string =
-        static_cast<char*>(gpr_malloc(bundle_len + current_cert_len + 1));
-    strncpy(temp_string, *bundle, bundle_len);
-    strcat(temp_string, current_cert_string);
-    size_t temp_string_len = bundle_len + current_cert_len + 1;
-    *bundle = static_cast<char*>(gpr_malloc(temp_string_len + 1));
-    strncpy(*bundle, temp_string, temp_string_len + 1);
-    gpr_free(temp_string);
+    memcpy(*bundle + bundle_len, current_cert_string, current_cert_len + 1);
+  } else {
+    *bundle = static_cast<char*>(gpr_malloc(current_cert_len + 1));
+    memcpy(*bundle, "\0", current_cert_len);
+    memcpy(*bundle, current_cert_string, current_cert_len + 1);
   }
 }
 
@@ -1332,13 +1334,38 @@ grpc_slice DefaultSslRootStore::CreateRootCertsBundle() {
     return bundle_slice;
   }
   FILE* cert_file;
+  size_t total_bundle_size = 0;
   struct dirent* directory_entry;
   char* bundle_string = nullptr;
   grpc_slice single_cert_slice = grpc_empty_slice();
+  // TODO: add logging when using opendir.
   DIR* ca_directory = opendir(found_cert_dir);
   if (ca_directory == nullptr) {
     return bundle_slice;
   }
+  // First pass: calculate totale bundle size.
+  while ((directory_entry = readdir(ca_directory)) != nullptr) {
+    if (directory_entry->d_type == DT_DIR ||
+        strcmp(directory_entry->d_name, ".") == 0 ||
+        strcmp(directory_entry->d_name, "..") == 0) {
+      // no subdirectories.
+      continue;
+    }
+    const char* file_entry_name = directory_entry->d_name;
+    const char* file_path =
+        GetAbsoluteCertFilePath(found_cert_dir, file_entry_name);
+    cert_file = fopen(file_path, "r");
+    if (cert_file != nullptr) {
+      fseek(cert_file, 0L, SEEK_END);
+      total_bundle_size += ftell(cert_file);
+      fclose(cert_file);
+    }
+  }
+  bundle_string = static_cast<char*>(gpr_malloc(total_bundle_size + 1));
+  memcpy(bundle_string, "\0", total_bundle_size);
+  // Second pass: read files into bundle.
+  closedir(ca_directory);
+  ca_directory = opendir(found_cert_dir);
   while ((directory_entry = readdir(ca_directory)) != nullptr) {
     if (directory_entry->d_type == DT_DIR ||
         strcmp(directory_entry->d_name, ".") == 0 ||
@@ -1359,7 +1386,6 @@ grpc_slice DefaultSslRootStore::CreateRootCertsBundle() {
     }
   }
   closedir(ca_directory);
-  strcat(bundle_string, "\0");
   if (bundle_string != nullptr) {
     bundle_slice =
         grpc_slice_from_copied_buffer(bundle_string, strlen(bundle_string));
