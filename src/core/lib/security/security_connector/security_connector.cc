@@ -1337,7 +1337,6 @@ grpc_slice DefaultSslRootStore::CreateRootCertsBundle() {
   size_t total_bundle_size = 0;
   struct dirent* directory_entry;
   char* bundle_string = nullptr;
-  grpc_slice single_cert_slice = grpc_empty_slice();
   // TODO: add logging when using opendir.
   DIR* ca_directory = opendir(found_cert_dir);
   if (ca_directory == nullptr) {
@@ -1377,9 +1376,16 @@ grpc_slice DefaultSslRootStore::CreateRootCertsBundle() {
     const char* file_path =
         GetAbsoluteCertFilePath(found_cert_dir, file_entry_name);
     if ((cert_file = fopen(file_path, "r")) != nullptr) {
-      GRPC_LOG_IF_ERROR("load_file",
-                        grpc_load_file(file_path, 1, &single_cert_slice));
-      char* single_cert_string = grpc_slice_to_c_string(single_cert_slice);
+      // Read file into char*.
+      fseek(cert_file, 0, SEEK_END);
+      size_t cert_file_size = ftell(cert_file);
+      rewind(cert_file);
+      char* single_cert_string = nullptr;
+      single_cert_string = static_cast<char*>(gpr_malloc(
+                          (cert_file_size + 1) * sizeof(*single_cert_string)));
+      fread(single_cert_string, cert_file_size, 1, cert_file);
+      single_cert_string[cert_file_size] = '\0';
+      // Append char* to roots bundle.
       AddCertToBundle(&bundle_string, single_cert_string);
       gpr_free(single_cert_string);
       fclose(cert_file);
@@ -1388,7 +1394,7 @@ grpc_slice DefaultSslRootStore::CreateRootCertsBundle() {
   closedir(ca_directory);
   if (bundle_string != nullptr) {
     bundle_slice =
-        grpc_slice_from_copied_buffer(bundle_string, strlen(bundle_string));
+        grpc_slice_from_copied_buffer(bundle_string, total_bundle_size);
     gpr_free(bundle_string);
   }
   return bundle_slice;
