@@ -293,13 +293,10 @@ class DefaultSslRootStore {
   static char* GetAbsoluteCertFilePath(const char* valid_cert_dir,
                                        const char* file_entry_name);
 
-  // Handles bundle creation by concatenating single cert files.
+  // Computes the total size of a directory given a path to it.
+  // Returns such size.
   // Protected for testing.
-  // - bundle is a pointer to the string containing the list of certificates to
-  // be returned from CreateRootCertsBundle.
-  // - current_cert_string is the string containing the certificate pending
-  // concatenation to the certs bundle.
-  static void AddCertToBundle(char** bundle, const char* current_cert_string);
+  static size_t GetDirectoryTotalSize(const char* directory_path);
 
   // Set and get the platform variable.
   // Required for GetSystemRootCerts() tests.

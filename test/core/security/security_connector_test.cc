@@ -399,10 +399,6 @@ class TestDefaultSslRootStore : public DefaultSslRootStore {
                                                  const char* filename) {
     return GetAbsoluteCertFilePath(directory, filename);
   }
-
-  static void AddCertToBundleForTesting(char** bundle, char* cert) {
-    AddCertToBundle(bundle, cert);
-  }
 };
 
 }  // namespace
@@ -513,21 +509,6 @@ static void test_absolute_cert_path() {
 
 static void test_cert_bundle_creation() {
   gpr_setenv("GRPC_USE_SYSTEM_SSL_ROOTS", "true");
-  /* Test AddCertToBundle when bundle string is null (should copy). */
-  char* bundle_ptr = nullptr;
-  char cert_str[] = "123";
-  char* cert_ptr = cert_str;
-  grpc_core::TestDefaultSslRootStore::AddCertToBundleForTesting(&bundle_ptr,
-                                                                cert_ptr);
-  GPR_ASSERT(strcmp(bundle_ptr, "123") == 0);
-
-  /* Test AddCertToBundle when bundle string is not null (should concatenate).
-   */
-  char bundle_str[] = "Testing";
-  bundle_ptr = bundle_str;
-  grpc_core::TestDefaultSslRootStore::AddCertToBundleForTesting(&bundle_ptr,
-                                                                cert_ptr);
-  GPR_ASSERT(strcmp(bundle_ptr, "Testing123") == 0);
 
   /* Test that CreateRootCertsBundle returns a correct slice. */
   grpc_slice roots_bundle = grpc_empty_slice();
