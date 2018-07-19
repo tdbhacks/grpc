@@ -290,7 +290,7 @@ class DefaultSslRootStore {
   // Gets the absolute file path needed to load a certificate file.
   // Returns such path.
   // Protected for testing.
-  static char* GetAbsoluteCertFilePath(const char* valid_cert_dir,
+  static char* GetAbsoluteFilePath(const char* valid_file_dir,
                                        const char* file_entry_name);
 
   // Computes the total size of a directory given a path to it.
