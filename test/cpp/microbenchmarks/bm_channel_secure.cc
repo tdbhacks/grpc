@@ -99,9 +99,9 @@ int main(int argc, char** argv) {
   ::benchmark::Initialize(&argc, argv);
   ::grpc::testing::InitTest(&argc, &argv, false);
 
-  // Total_iteractions is the number of times we compute the system roots.
+  // kTotalIterations is the number of times we compute the system roots.
   // This value is then used to calculate the average runtime.
-  const int total_iterations = 1000;
+  const int kTotalIterations = 1000;
 
   // System roots feature disabled.
   auto start = std::chrono::high_resolution_clock::now();
@@ -111,7 +111,7 @@ int main(int argc, char** argv) {
   if (gpr_getenv("GRPC_SYSTEM_SSL_ROOTS_DIR") != nullptr) {
     unsetenv("GRPC_SYSTEM_SSL_ROOTS_DIR");
   }
-  for (int i=0; i<total_iterations; i++) {
+  for (int i=0; i<kTotalIterations; i++) {
     grpc_core::TestDefaultSslRootStore::ComputePemRootCertsForTesting();
   }
   auto finish = std::chrono::high_resolution_clock::now();
@@ -122,7 +122,7 @@ int main(int argc, char** argv) {
   start = std::chrono::high_resolution_clock::now();
   gpr_setenv("GRPC_USE_SYSTEM_SSL_ROOTS", "1");
   gpr_setenv("GRPC_SYSTEM_SSL_ROOTS_DIR", "./etc");
-  for (int i=0; i<total_iterations; i++) {
+  for (int i=0; i<kTotalIterations; i++) {
     grpc_core::TestDefaultSslRootStore::ComputePemRootCertsForTesting();
   }
   finish = std::chrono::high_resolution_clock::now();
@@ -132,7 +132,7 @@ int main(int argc, char** argv) {
   // System feature enabled.
   start = std::chrono::high_resolution_clock::now();
   unsetenv("GRPC_SYSTEM_SSL_ROOTS_DIR");
-  for (int i=0; i<total_iterations; i++) {
+  for (int i=0; i<kTotalIterations; i++) {
     grpc_core::TestDefaultSslRootStore::ComputePemRootCertsForTesting();
   }
   finish = std::chrono::high_resolution_clock::now();
@@ -145,17 +145,17 @@ int main(int argc, char** argv) {
   benchmark::RunTheBenchmarksNamespaced();
 
   std::cout << "\nRoot certs computation took: "
-          << time_elapsed0/total_iterations
+          << time_elapsed0/kTotalIterations
           << " nanoseconds, with the feature disabled"
           << "\n";
 
   std::cout << "Root certs computation took: "
-          << time_elapsed1/total_iterations
+          << time_elapsed1/kTotalIterations
           << " nanoseconds, with the feature using roots.pem"
           << "\n";
 
   std::cout << "Root certs computation took: "
-          << time_elapsed2/total_iterations
+          << time_elapsed2/kTotalIterations
           << " nanoseconds, with the feature enabled (uses system roots)"
           << "\n\n";
   return 0;

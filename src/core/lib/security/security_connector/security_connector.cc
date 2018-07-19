@@ -1200,7 +1200,7 @@ const char* DefaultSslRootStore::GetPemRootCerts() {
 
 grpc_slice DefaultSslRootStore::ComputePemRootCerts() {
   grpc_slice result = grpc_empty_slice();
-  const char* use_system_certs = gpr_getenv(GRPC_USE_SYSTEM_SSL_ROOTS);
+  const char* use_system_roots = gpr_getenv(GRPC_USE_SYSTEM_SSL_ROOTS);
   const char* use_custom_system_roots_dir =
       gpr_getenv(GRPC_SYSTEM_SSL_ROOTS_DIR);
   // First try to load the roots from the environment.
@@ -1224,22 +1224,21 @@ grpc_slice DefaultSslRootStore::ComputePemRootCerts() {
     }
     gpr_free(pem_root_certs);
   }
-  // Try system roots if flag is enabled.
-  if (GRPC_SLICE_IS_EMPTY(result) && use_system_certs != nullptr) {
+  // Try custom roots directory if flag is enabled.
+  if (GRPC_SLICE_IS_EMPTY(result) && use_custom_system_roots_dir != nullptr) {
+    result = CreateRootCertsBundle();
+  }
+  // Try loading roots from OS trust store if flag is enabled.
+  if (GRPC_SLICE_IS_EMPTY(result) && use_system_roots != nullptr) {
     DetectPlatform();
-    // Check for user-specified system roots location.
-    if (use_custom_system_roots_dir != nullptr) {
-      result = CreateRootCertsBundle();
-    } else {  // Find distribution-specific roots location.
-      const char* system_root_certs = GetSystemRootCertsFile();
-      if (system_root_certs != nullptr) {
-        GRPC_LOG_IF_ERROR("load_file",
-                          grpc_load_file(system_root_certs, 1, &result));
-      } else {  // Fallback to Linux-specific alternative method.
-        if (platform_ == PLATFORM_LINUX) {
+    const char* system_root_certs = GetSystemRootCertsFile();
+    if (system_root_certs != nullptr) {
+      GRPC_LOG_IF_ERROR("load_file",
+                        grpc_load_file(system_root_certs, 1, &result));
+    }
+    // Fallback to Linux-specific alternative method.
+    if (GRPC_SLICE_IS_EMPTY(result) && platform_ == PLATFORM_LINUX) {
           result = CreateRootCertsBundle();
-        }
-      }
     }
   }
   // Fallback to roots manually shipped with gRPC.
@@ -1253,18 +1252,17 @@ grpc_slice DefaultSslRootStore::ComputePemRootCerts() {
 
 const char* DefaultSslRootStore::GetSystemRootCertsFile() {
   switch (platform_) {
-    case PLATFORM_LINUX:
-      {
-        FILE* cert_file;
-        size_t num_cert_files_ = sizeof(DefaultSslRootStore::linux_cert_files_);
-        for (size_t i = 0; i < num_cert_files_; i++) {
-          cert_file = fopen(linux_cert_files_[i], "r");
-          if (cert_file != nullptr) {
-            fclose(cert_file);
-            return linux_cert_files_[i];
-          }
+    case PLATFORM_LINUX: {
+      FILE* cert_file;
+      size_t num_cert_files_ = sizeof(DefaultSslRootStore::linux_cert_files_);
+      for (size_t i = 0; i < num_cert_files_; i++) {
+        cert_file = fopen(linux_cert_files_[i], "r");
+        if (cert_file != nullptr) {
+          fclose(cert_file);
+          return linux_cert_files_[i];
         }
       }
+    }
       return nullptr;
     case PLATFORM_WINDOWS:
       // TODO: implement Windows-specific method (certutil?).
@@ -1272,7 +1270,8 @@ const char* DefaultSslRootStore::GetSystemRootCertsFile() {
     case PLATFORM_APPLE:
       // TODO: implement Apple-specific method (keychain API?).
       break;
-    default: break;
+    default:
+      break;
   }
   return nullptr;
 }
@@ -1296,14 +1295,14 @@ const char* DefaultSslRootStore::GetValidCertsDirectory() {
 }
 
 // Combine directory path with filename to get absolute path.
-char* DefaultSslRootStore::GetAbsoluteCertFilePath(
-    const char* valid_cert_dir, const char* file_entry_name) {
-  if (valid_cert_dir == nullptr || file_entry_name == nullptr) {
+char* DefaultSslRootStore::GetAbsoluteFilePath(
+    const char* valid_file_dir, const char* file_entry_name) {
+  if (valid_file_dir == nullptr || file_entry_name == nullptr) {
     return nullptr;
   }
   char* absolute_path = static_cast<char*>(
-      gpr_malloc(strlen(valid_cert_dir) + strlen(file_entry_name) + 2));
-  strncpy(absolute_path, valid_cert_dir, strlen(valid_cert_dir) + 1);
+      gpr_malloc(strlen(valid_file_dir) + strlen(file_entry_name) + 2));
+  strncpy(absolute_path, valid_file_dir, strlen(valid_file_dir) + 1);
   strcat(absolute_path, "/");
   strcat(absolute_path, file_entry_name);
   return absolute_path;
@@ -1324,7 +1323,7 @@ size_t DefaultSslRootStore::GetDirectoryTotalSize(const char* directory_path) {
     }
     const char* file_entry_name = directory_entry->d_name;
     const char* file_path =
-        GetAbsoluteCertFilePath(directory_path, file_entry_name);
+        GetAbsoluteFilePath(directory_path, file_entry_name);
     cert_file = fopen(file_path, "r");
     if (cert_file != nullptr) {
       fseek(cert_file, 0L, SEEK_END);
@@ -1361,21 +1360,20 @@ grpc_slice DefaultSslRootStore::CreateRootCertsBundle() {
     }
     const char* file_entry_name = directory_entry->d_name;
     const char* file_path =
-        GetAbsoluteCertFilePath(found_cert_dir, file_entry_name);
+        GetAbsoluteFilePath(found_cert_dir, file_entry_name);
     if ((cert_file = fopen(file_path, "r")) != nullptr) {
       // Read file into bundle.
       fseek(cert_file, 0, SEEK_END);
       size_t cert_file_size = ftell(cert_file);
       rewind(cert_file);
       fread(bundle_string + bytes_read, cert_file_size,
-                          /* nmemb */ 1, cert_file);
+            /* nmemb */ 1, cert_file);
       bytes_read += cert_file_size;
       fclose(cert_file);
     }
   }
   closedir(ca_directory);
-  bundle_slice =
-      grpc_slice_new(bundle_string, total_bundle_size, gpr_free);
+  bundle_slice = grpc_slice_new(bundle_string, total_bundle_size, gpr_free);
   gpr_free(bundle_string);
   return bundle_slice;
 }
