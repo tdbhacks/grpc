@@ -1238,7 +1238,7 @@ grpc_slice DefaultSslRootStore::ComputePemRootCerts() {
     }
     // Fallback to Linux-specific alternative method.
     if (GRPC_SLICE_IS_EMPTY(result) && platform_ == PLATFORM_LINUX) {
-          result = CreateRootCertsBundle();
+      result = CreateRootCertsBundle();
     }
   }
   // Fallback to roots manually shipped with gRPC.
@@ -1256,7 +1256,7 @@ const char* DefaultSslRootStore::GetSystemRootCertsFile() {
       FILE* cert_file;
       size_t num_cert_files_ = sizeof(DefaultSslRootStore::linux_cert_files_);
       for (size_t i = 0; i < num_cert_files_; i++) {
-        cert_file = fopen(linux_cert_files_[i], "r");
+        cert_file = fopen(linux_cert_files_[i], "rb");
         if (cert_file != nullptr) {
           fclose(cert_file);
           return linux_cert_files_[i];
@@ -1295,8 +1295,8 @@ const char* DefaultSslRootStore::GetValidCertsDirectory() {
 }
 
 // Combine directory path with filename to get absolute path.
-char* DefaultSslRootStore::GetAbsoluteFilePath(
-    const char* valid_file_dir, const char* file_entry_name) {
+char* DefaultSslRootStore::GetAbsoluteFilePath(const char* valid_file_dir,
+                                               const char* file_entry_name) {
   if (valid_file_dir == nullptr || file_entry_name == nullptr) {
     return nullptr;
   }
@@ -1324,7 +1324,7 @@ size_t DefaultSslRootStore::GetDirectoryTotalSize(const char* directory_path) {
     const char* file_entry_name = directory_entry->d_name;
     const char* file_path =
         GetAbsoluteFilePath(directory_path, file_entry_name);
-    cert_file = fopen(file_path, "r");
+    cert_file = fopen(file_path, "rb");
     if (cert_file != nullptr) {
       fseek(cert_file, 0L, SEEK_END);
       total_size += ftell(cert_file);
@@ -1361,7 +1361,7 @@ grpc_slice DefaultSslRootStore::CreateRootCertsBundle() {
     const char* file_entry_name = directory_entry->d_name;
     const char* file_path =
         GetAbsoluteFilePath(found_cert_dir, file_entry_name);
-    if ((cert_file = fopen(file_path, "r")) != nullptr) {
+    if ((cert_file = fopen(file_path, "rb")) != nullptr) {
       // Read file into bundle.
       fseek(cert_file, 0, SEEK_END);
       size_t cert_file_size = ftell(cert_file);
