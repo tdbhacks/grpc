@@ -1249,15 +1249,12 @@ grpc_slice DefaultSslRootStore::ComputePemRootCerts() {
 grpc_slice DefaultSslRootStore::GetSystemRootCerts() {
   switch (platform_) {
     case PLATFORM_LINUX: {
-      FILE* cert_file;
       grpc_slice valid_bundle_slice = grpc_empty_slice();
       size_t num_cert_files_ = sizeof(DefaultSslRootStore::linux_cert_files_);
       for (size_t i = 0; i < num_cert_files_; i++) {
-        cert_file = fopen(linux_cert_files_[i], "rb");
-        if (cert_file != nullptr) {
-          GRPC_LOG_IF_ERROR("load_file", grpc_load_file(linux_cert_files_[i], 1,
-                                                        &valid_bundle_slice));
-          fclose(cert_file);
+        grpc_error* error =
+            grpc_load_file(linux_cert_files_[i], 1, &valid_bundle_slice);
+        if (error == GRPC_ERROR_NONE) {
           return valid_bundle_slice;
         }
       }
@@ -1275,8 +1272,8 @@ grpc_slice DefaultSslRootStore::GetSystemRootCerts() {
   return grpc_empty_slice();
 }
 
-// Search through list of Linux directories to find the right one.
 const char* DefaultSslRootStore::GetValidCertsDirectory() {
+  // TODO: this function can return a slice to avoid opening the dir twice.
   DIR* directory;
   const char* custom_dir = gpr_getenv(GRPC_SYSTEM_SSL_ROOTS_DIR);
   if (custom_dir != nullptr) {
@@ -1293,7 +1290,6 @@ const char* DefaultSslRootStore::GetValidCertsDirectory() {
   return nullptr;
 }
 
-// Combine directory path with filename to get absolute path.
 grpc_slice DefaultSslRootStore::GetAbsoluteFilePath(
     const char* valid_file_dir, const char* file_entry_name) {
   if (valid_file_dir == nullptr || file_entry_name == nullptr) {
@@ -1345,10 +1341,9 @@ grpc_slice DefaultSslRootStore::CreateRootCertsBundle() {
     return bundle_slice;
   }
 
-  size_t total_bundle_size = 0;
   struct dirent* directory_entry;
   char* bundle_string = nullptr;
-  total_bundle_size = GetDirectoryTotalSize(found_cert_dir);
+  size_t total_bundle_size = GetDirectoryTotalSize(found_cert_dir);
   bundle_string = static_cast<char*>(gpr_zalloc(total_bundle_size + 1));
 
   DIR* ca_directory = opendir(found_cert_dir);
