@@ -31,7 +31,7 @@
 auto& force_library_initialization = Library::get();
 
 // Total number of initial channels used for benchmarking.
-const size_t number_of_channels = 512;
+const size_t kNumberOfChannels = 512;
 
 class ChannelDestroyerFixture {
  public:
