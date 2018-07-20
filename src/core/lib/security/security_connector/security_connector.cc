@@ -1294,22 +1294,26 @@ const char* DefaultSslRootStore::GetValidCertsDirectory() {
 }
 
 // Combine directory path with filename to get absolute path.
-char* DefaultSslRootStore::GetAbsoluteFilePath(const char* valid_file_dir,
-                                               const char* file_entry_name) {
+grpc_slice DefaultSslRootStore::GetAbsoluteFilePath(
+    const char* valid_file_dir, const char* file_entry_name) {
   if (valid_file_dir == nullptr || file_entry_name == nullptr) {
-    return nullptr;
+    return grpc_empty_slice();
   }
-  char* absolute_path = static_cast<char*>(
-      gpr_malloc(strlen(valid_file_dir) + strlen(file_entry_name) + 2));
-  strncpy(absolute_path, valid_file_dir, strlen(valid_file_dir) + 1);
+  size_t valid_file_dir_len = strlen(valid_file_dir);
+  size_t file_name_len = strlen(file_entry_name);
+  char* absolute_path =
+      static_cast<char*>(gpr_malloc(valid_file_dir_len + file_name_len + 2));
+  strncpy(absolute_path, valid_file_dir, valid_file_dir_len + 1);
   strcat(absolute_path, "/");
   strcat(absolute_path, file_entry_name);
-  return absolute_path;
+  return grpc_slice_new(absolute_path, valid_file_dir_len + file_name_len + 2,
+                        gpr_free);
 }
 
 size_t DefaultSslRootStore::GetDirectoryTotalSize(const char* directory_path) {
   struct dirent* directory_entry;
   FILE* cert_file;
+  grpc_slice file_path = grpc_empty_slice();
   size_t total_size = 0;
   // TODO: add logging when using opendir.
   DIR* ca_directory = opendir(directory_path);
@@ -1321,9 +1325,8 @@ size_t DefaultSslRootStore::GetDirectoryTotalSize(const char* directory_path) {
       continue;
     }
     const char* file_entry_name = directory_entry->d_name;
-    const char* file_path =
-        GetAbsoluteFilePath(directory_path, file_entry_name);
-    cert_file = fopen(file_path, "rb");
+    file_path = GetAbsoluteFilePath(directory_path, file_entry_name);
+    cert_file = fopen(grpc_slice_to_c_string(file_path), "rb");
     if (cert_file != nullptr) {
       fseek(cert_file, 0L, SEEK_END);
       total_size += ftell(cert_file);
@@ -1331,6 +1334,7 @@ size_t DefaultSslRootStore::GetDirectoryTotalSize(const char* directory_path) {
     }
   }
   closedir(ca_directory);
+  grpc_slice_unref(file_path);
   return total_size;
 }
 
@@ -1349,6 +1353,7 @@ grpc_slice DefaultSslRootStore::CreateRootCertsBundle() {
 
   DIR* ca_directory = opendir(found_cert_dir);
   FILE* cert_file;
+  grpc_slice file_path = grpc_empty_slice();
   size_t bytes_read = 0;
   while ((directory_entry = readdir(ca_directory)) != nullptr) {
     if (directory_entry->d_type == DT_DIR ||
@@ -1358,9 +1363,9 @@ grpc_slice DefaultSslRootStore::CreateRootCertsBundle() {
       continue;
     }
     const char* file_entry_name = directory_entry->d_name;
-    const char* file_path =
-        GetAbsoluteFilePath(found_cert_dir, file_entry_name);
-    if ((cert_file = fopen(file_path, "rb")) != nullptr) {
+    file_path = GetAbsoluteFilePath(found_cert_dir, file_entry_name);
+    cert_file = fopen(grpc_slice_to_c_string(file_path), "rb");
+    if (cert_file != nullptr) {
       // Read file into bundle.
       fseek(cert_file, 0, SEEK_END);
       size_t cert_file_size = ftell(cert_file);
@@ -1373,7 +1378,7 @@ grpc_slice DefaultSslRootStore::CreateRootCertsBundle() {
   }
   closedir(ca_directory);
   bundle_slice = grpc_slice_new(bundle_string, total_bundle_size, gpr_free);
-  gpr_free(bundle_string);
+  grpc_slice_unref(file_path);
   return bundle_slice;
 }
 
