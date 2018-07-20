@@ -279,16 +279,19 @@ class DefaultSslRootStore {
   static void DetectPlatform();
 
   // Creates a bundle slice containing the contents of all certificate files in
-  // a directory. Returns such slice. Protected for testing.
+  // a directory.
+  // Returns such slice.
+  // Protected for testing.
   static grpc_slice CreateRootCertsBundle();
 
-  // Looks for a valid directory to load certificates from.
+  // Looks for a valid directory to load multiple certificates from.
   // Returns such path or nullptr otherwise.
   // Protected for testing.
   static const char* GetValidCertsDirectory();
 
   // Gets the absolute file path needed to load a certificate file.
-  // Returns such path.
+  // Returns such path as a slice in order to avoid memory leaks caused by
+  // mallocating a char*.
   // Protected for testing.
   static grpc_slice GetAbsoluteFilePath(const char* valid_file_dir,
                                         const char* file_entry_name);
