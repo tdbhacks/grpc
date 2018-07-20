@@ -395,8 +395,8 @@ class TestDefaultSslRootStore : public DefaultSslRootStore {
     return CreateRootCertsBundle();
   }
 
-  static char* GetAbsoluteFilePathForTesting(const char* directory,
-                                             const char* filename) {
+  static grpc_slice GetAbsoluteFilePathForTesting(const char* directory,
+                                                  const char* filename) {
     return GetAbsoluteFilePath(directory, filename);
   }
 };
@@ -499,12 +499,12 @@ static void test_platform_detection() {
 static void test_absolute_cert_path() {
   const char* directory = "nonexistent/test/directory";
   const char* filename = "doesnotexist.txt";
-  char* result_path =
+  grpc_slice result_path =
       grpc_core::TestDefaultSslRootStore::GetAbsoluteFilePathForTesting(
           directory, filename);
-  GPR_ASSERT(
-      strcmp(result_path, "nonexistent/test/directory/doesnotexist.txt") == 0);
-  gpr_free(result_path);
+  GPR_ASSERT(strcmp(grpc_slice_to_c_string(result_path),
+                    "nonexistent/test/directory/doesnotexist.txt") == 0);
+  grpc_slice_unref(result_path);
 }
 
 static void test_cert_bundle_creation() {
