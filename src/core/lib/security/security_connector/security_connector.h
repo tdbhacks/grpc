@@ -270,11 +270,11 @@ class DefaultSslRootStore {
   // This function is protected instead of private, so that it can be tested.
   static grpc_slice ComputePemRootCerts();
 
-  // Returns the path for os-specific root certificates.
+  // Returns a grpc_slice containing OS-specific root certificates.
   // Protected for testing.
-  static const char* GetSystemRootCertsFile();
+  static grpc_slice GetSystemRootCerts();
 
-  // Detect the os platform and set the platform variable to it.
+  // Detect the OS platform and set the platform variable to it.
   // Protected for testing.
   static void DetectPlatform();
 
@@ -291,7 +291,7 @@ class DefaultSslRootStore {
   // Returns such path.
   // Protected for testing.
   static char* GetAbsoluteFilePath(const char* valid_file_dir,
-                                       const char* file_entry_name);
+                                   const char* file_entry_name);
 
   // Computes the total size of a directory given a path to it.
   // Returns such size.
