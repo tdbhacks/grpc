@@ -379,8 +379,8 @@ class TestDefaultSslRootStore : public DefaultSslRootStore {
     return ComputePemRootCerts();
   }
 
-  static const char* GetSystemRootCertsFileForTesting() {
-    return GetSystemRootCertsFile();
+  static grpc_slice GetSystemRootCertsForTesting() {
+    return GetSystemRootCerts();
   }
 
   static void SetPlatformForTesting(grpc_platform platform) {
@@ -396,7 +396,7 @@ class TestDefaultSslRootStore : public DefaultSslRootStore {
   }
 
   static char* GetAbsoluteFilePathForTesting(const char* directory,
-                                                 const char* filename) {
+                                             const char* filename) {
     return GetAbsoluteFilePath(directory, filename);
   }
 };
@@ -468,13 +468,13 @@ static void test_default_ssl_roots(void) {
   gpr_setenv("GRPC_USE_SYSTEM_SSL_ROOTS", "");
 }
 
-/* Test that the GetSystemRootCertsFile function returns a nullptr when the
+/* Test that the GetSystemRootCerts function returns an empty slice when the
    platform variable doesn't match one of the options. */
 static void test_system_cert_retrieval() {
   grpc_core::TestDefaultSslRootStore::SetPlatformForTesting(PLATFORM_TEST);
-  const char* cert_path =
-      grpc_core::TestDefaultSslRootStore::GetSystemRootCertsFileForTesting();
-  GPR_ASSERT(cert_path == nullptr);
+  grpc_slice cert_slice =
+      grpc_core::TestDefaultSslRootStore::GetSystemRootCertsForTesting();
+  GPR_ASSERT(GRPC_SLICE_IS_EMPTY(cert_slice));
 }
 
 /* Test that the DetectPlatform function correctly detects Linux, Windows,

@@ -1231,11 +1231,7 @@ grpc_slice DefaultSslRootStore::ComputePemRootCerts() {
   // Try loading roots from OS trust store if flag is enabled.
   if (GRPC_SLICE_IS_EMPTY(result) && use_system_roots != nullptr) {
     DetectPlatform();
-    const char* system_root_certs = GetSystemRootCertsFile();
-    if (system_root_certs != nullptr) {
-      GRPC_LOG_IF_ERROR("load_file",
-                        grpc_load_file(system_root_certs, 1, &result));
-    }
+    result = GetSystemRootCerts();
     // Fallback to Linux-specific alternative method.
     if (GRPC_SLICE_IS_EMPTY(result) && platform_ == PLATFORM_LINUX) {
       result = CreateRootCertsBundle();
@@ -1250,20 +1246,23 @@ grpc_slice DefaultSslRootStore::ComputePemRootCerts() {
   return result;
 }
 
-const char* DefaultSslRootStore::GetSystemRootCertsFile() {
+grpc_slice DefaultSslRootStore::GetSystemRootCerts() {
   switch (platform_) {
     case PLATFORM_LINUX: {
       FILE* cert_file;
+      grpc_slice valid_bundle_slice = grpc_empty_slice();
       size_t num_cert_files_ = sizeof(DefaultSslRootStore::linux_cert_files_);
       for (size_t i = 0; i < num_cert_files_; i++) {
         cert_file = fopen(linux_cert_files_[i], "rb");
         if (cert_file != nullptr) {
+          GRPC_LOG_IF_ERROR("load_file", grpc_load_file(linux_cert_files_[i], 1,
+                                                        &valid_bundle_slice));
           fclose(cert_file);
-          return linux_cert_files_[i];
+          return valid_bundle_slice;
         }
       }
+      return grpc_empty_slice();
     }
-      return nullptr;
     case PLATFORM_WINDOWS:
       // TODO: implement Windows-specific method (certutil?).
       break;
@@ -1273,7 +1272,7 @@ const char* DefaultSslRootStore::GetSystemRootCertsFile() {
     default:
       break;
   }
-  return nullptr;
+  return grpc_empty_slice();
 }
 
 // Search through list of Linux directories to find the right one.
