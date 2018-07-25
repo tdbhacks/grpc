@@ -66,6 +66,9 @@ static const char* installed_roots_path =
 /* --- Flag to specify custom directory for system certs testing --- */
 #ifndef GRPC_SYSTEM_SSL_ROOTS_DIR
 #define GRPC_SYSTEM_SSL_ROOTS_DIR "GRPC_SYSTEM_SSL_ROOTS_DIR"
+
+#ifndef TSI_OPENSSL_ALPN_SUPPORT
+#define TSI_OPENSSL_ALPN_SUPPORT 1
 #endif
 
 /* -- Overridden default roots. -- */
@@ -861,7 +864,8 @@ grpc_auth_context* grpc_ssl_peer_to_auth_context(const tsi_peer* peer) {
 static grpc_error* ssl_check_peer(grpc_security_connector* sc,
                                   const char* peer_name, const tsi_peer* peer,
                                   grpc_auth_context** auth_context) {
-  /* Check the ALPN. */
+#if TSI_OPENSSL_ALPN_SUPPORT
+  /* Check the ALPN if ALPN is supported. */
   const tsi_peer_property* p =
       tsi_peer_get_property_by_name(peer, TSI_SSL_ALPN_SELECTED_PROTOCOL);
   if (p == nullptr) {
@@ -872,7 +876,7 @@ static grpc_error* ssl_check_peer(grpc_security_connector* sc,
     return GRPC_ERROR_CREATE_FROM_STATIC_STRING(
         "Cannot check peer: invalid ALPN value.");
   }
-
+#endif /* TSI_OPENSSL_ALPN_SUPPORT */
   /* Check the peer name if specified. */
   if (peer_name != nullptr && !grpc_ssl_host_matches_name(peer, peer_name)) {
     char* msg;
