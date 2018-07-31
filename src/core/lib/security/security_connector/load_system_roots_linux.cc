@@ -16,9 +16,9 @@
  *
  */
 
-#include <grpc/slice_buffer.h>
 #include <grpc/support/port_platform.h>
 
+#include <grpc/slice_buffer.h>
 #include "src/core/lib/security/security_connector/load_system_roots_linux.h"
 
 #ifdef GPR_LINUX
@@ -103,6 +103,9 @@ size_t SystemRootCerts::GetDirectoryTotalSize(const char* directory_path) {
   size_t total_size = 0;
   // TODO: add logging when using opendir.
   DIR* ca_directory = opendir(directory_path);
+  if (ca_directory == nullptr) {
+    return total_size;
+  }
   while ((directory_entry = readdir(ca_directory)) != nullptr) {
     struct stat dir_entry_stat;
     const char* file_entry_name = directory_entry->d_name;
@@ -135,6 +138,11 @@ grpc_slice SystemRootCerts::CreateRootCertsBundle() {
 
   DIR* ca_directory = opendir(found_cert_dir);
   size_t bytes_read = 0;
+  if (ca_directory == nullptr) {
+    gpr_free(bundle_string);
+    gpr_free((char*)found_cert_dir);  // Casting to char* to fix memory leak.
+    return bundle_slice;
+  }
   while ((directory_entry = readdir(ca_directory)) != nullptr) {
     struct stat dir_entry_stat;
     const char* file_entry_name = directory_entry->d_name;
@@ -161,19 +169,21 @@ grpc_slice SystemRootCerts::CreateRootCertsBundle() {
     }
   }
   closedir(ca_directory);
+  gpr_free((char*)found_cert_dir);  // Casting to non-const to fix memory leak.
   bundle_slice = grpc_slice_new(bundle_string, bytes_read, gpr_free);
   return bundle_slice;
 }
 
 grpc_slice LoadSystemRootCerts() {
   grpc_slice result = grpc_empty_slice();
-  // Use user-specified custom directory if flag is set
+  // Prioritize user-specified custom directory if flag is set.
   const bool use_custom_dir =
       gpr_is_true(gpr_getenv("GRPC_SYSTEM_SSL_ROOTS_DIR"));
   if (use_custom_dir) {
     result = SystemRootCerts::CreateRootCertsBundle();
   }
-  // Fallback to default, distribution-specific directory
+  /* If the custom directory is empty/invalid/not specified, fallback to
+     distribution-specific directory. */
   if (GRPC_SLICE_IS_EMPTY(result)) {
     result = SystemRootCerts::GetSystemRootCerts();
   }

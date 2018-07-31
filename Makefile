@@ -3611,8 +3611,6 @@ LIBGRPC_SRC = \
     src/core/lib/security/security_connector/alts_security_connector.cc \
     src/core/lib/security/security_connector/load_system_roots_fallback.cc \
     src/core/lib/security/security_connector/load_system_roots_linux.cc \
-    src/core/lib/security/security_connector/load_system_roots_macos.cc \
-    src/core/lib/security/security_connector/load_system_roots_windows.cc \
     src/core/lib/security/security_connector/local_security_connector.cc \
     src/core/lib/security/security_connector/security_connector.cc \
     src/core/lib/security/transport/client_auth_filter.cc \
@@ -4041,8 +4039,6 @@ LIBGRPC_CRONET_SRC = \
     src/core/lib/security/security_connector/alts_security_connector.cc \
     src/core/lib/security/security_connector/load_system_roots_fallback.cc \
     src/core/lib/security/security_connector/load_system_roots_linux.cc \
-    src/core/lib/security/security_connector/load_system_roots_macos.cc \
-    src/core/lib/security/security_connector/load_system_roots_windows.cc \
     src/core/lib/security/security_connector/local_security_connector.cc \
     src/core/lib/security/security_connector/security_connector.cc \
     src/core/lib/security/transport/client_auth_filter.cc \
@@ -24668,8 +24664,6 @@ src/core/lib/security/credentials/ssl/ssl_credentials.cc: $(OPENSSL_DEP)
 src/core/lib/security/security_connector/alts_security_connector.cc: $(OPENSSL_DEP)
 src/core/lib/security/security_connector/load_system_roots_fallback.cc: $(OPENSSL_DEP)
 src/core/lib/security/security_connector/load_system_roots_linux.cc: $(OPENSSL_DEP)
-src/core/lib/security/security_connector/load_system_roots_macos.cc: $(OPENSSL_DEP)
-src/core/lib/security/security_connector/load_system_roots_windows.cc: $(OPENSSL_DEP)
 src/core/lib/security/security_connector/local_security_connector.cc: $(OPENSSL_DEP)
 src/core/lib/security/security_connector/security_connector.cc: $(OPENSSL_DEP)
 src/core/lib/security/transport/client_auth_filter.cc: $(OPENSSL_DEP)

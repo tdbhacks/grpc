@@ -16,13 +16,17 @@
  *
  */
 
-#include <grpc/slice_buffer.h>
 #include <grpc/support/port_platform.h>
 
+#include <grpc/slice_buffer.h>
 #include "src/core/lib/security/security_connector/load_system_roots.h"
 
-#ifdef GRPC_PLATFORM_FALLBACK
+#ifndef GPR_LINUX
+
+namespace grpc_core {
 
 grpc_slice LoadSystemRootCerts() { return grpc_empty_slice(); }
 
-#endif /* GRPC_PLATFORM_FALLBACK */
+}  // namespace grpc_core
+
+#endif /* GPR_LINUX */
