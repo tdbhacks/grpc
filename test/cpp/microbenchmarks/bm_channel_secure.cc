@@ -48,12 +48,12 @@ class ChannelDestroyerFixture {
 };
 
 namespace grpc_core {
-  class TestDefaultSslRootStore : public DefaultSslRootStore {
-   public:
-    static grpc_slice ComputePemRootCertsForTesting() {
-      return ComputePemRootCerts();
-    }
-  };
+class TestDefaultSslRootStore : public DefaultSslRootStore {
+ public:
+  static grpc_slice ComputePemRootCertsForTesting() {
+    return ComputePemRootCerts();
+  }
+};
 }  // namespace grpc_core
 
 class SecureChannelFixture : public ChannelDestroyerFixture {
@@ -101,6 +101,7 @@ int main(int argc, char** argv) {
   // kTotalIterations is the number of times we compute the system roots.
   // This value is then used to calculate the average runtime.
   const int kTotalIterations = 1000;
+  grpc_slice result_slice = grpc_empty_slice();
 
   // System roots feature disabled.
   auto start = std::chrono::high_resolution_clock::now();
@@ -111,7 +112,8 @@ int main(int argc, char** argv) {
     unsetenv("GRPC_SYSTEM_SSL_ROOTS_DIR");
   }
   for (int i = 0; i < kTotalIterations; i++) {
-    grpc_core::TestDefaultSslRootStore::ComputePemRootCertsForTesting();
+    result_slice = grpc_core::TestDefaultSslRootStore::ComputePemRootCertsForTesting();
+    grpc_slice_unref(result_slice);
   }
   auto finish = std::chrono::high_resolution_clock::now();
   auto time_elapsed0 =
@@ -123,7 +125,8 @@ int main(int argc, char** argv) {
   gpr_setenv("GRPC_USE_SYSTEM_SSL_ROOTS", "1");
   gpr_setenv("GRPC_SYSTEM_SSL_ROOTS_DIR", "./etc");
   for (int i = 0; i < kTotalIterations; i++) {
-    grpc_core::TestDefaultSslRootStore::ComputePemRootCertsForTesting();
+    result_slice = grpc_core::TestDefaultSslRootStore::ComputePemRootCertsForTesting();
+    grpc_slice_unref(result_slice);
   }
   finish = std::chrono::high_resolution_clock::now();
   auto time_elapsed1 =
@@ -134,7 +137,8 @@ int main(int argc, char** argv) {
   start = std::chrono::high_resolution_clock::now();
   unsetenv("GRPC_SYSTEM_SSL_ROOTS_DIR");
   for (int i = 0; i < kTotalIterations; i++) {
-    grpc_core::TestDefaultSslRootStore::ComputePemRootCertsForTesting();
+    result_slice = grpc_core::TestDefaultSslRootStore::ComputePemRootCertsForTesting();
+    grpc_slice_unref(result_slice);
   }
   finish = std::chrono::high_resolution_clock::now();
   auto time_elapsed2 =
