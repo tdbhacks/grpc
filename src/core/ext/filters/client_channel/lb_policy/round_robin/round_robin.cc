@@ -57,7 +57,7 @@ class RoundRobin : public LoadBalancingPolicy {
   explicit RoundRobin(const Args& args);
 
   void UpdateLocked(const grpc_channel_args& args) override;
-  bool PickLocked(PickState* pick) override;
+  bool PickLocked(PickState* pick, grpc_error** error) override;
   void CancelPickLocked(PickState* pick, grpc_error* error) override;
   void CancelMatchingPicksLocked(uint32_t initial_metadata_flags_mask,
                                  uint32_t initial_metadata_flags_eq,
@@ -67,8 +67,8 @@ class RoundRobin : public LoadBalancingPolicy {
   grpc_connectivity_state CheckConnectivityLocked(
       grpc_error** connectivity_error) override;
   void HandOffPendingPicksLocked(LoadBalancingPolicy* new_policy) override;
-  void PingOneLocked(grpc_closure* on_initiate, grpc_closure* on_ack) override;
   void ExitIdleLocked() override;
+  void ResetBackoffLocked() override;
   void FillChildRefsForChannelz(ChildRefsList* child_subchannels,
                                 ChildRefsList* ignored) override;
 
@@ -253,9 +253,10 @@ void RoundRobin::HandOffPendingPicksLocked(LoadBalancingPolicy* new_policy) {
   PickState* pick;
   while ((pick = pending_picks_) != nullptr) {
     pending_picks_ = pick->next;
-    if (new_policy->PickLocked(pick)) {
+    grpc_error* error = GRPC_ERROR_NONE;
+    if (new_policy->PickLocked(pick, &error)) {
       // Synchronous return, schedule closure.
-      GRPC_CLOSURE_SCHED(pick->on_complete, GRPC_ERROR_NONE);
+      GRPC_CLOSURE_SCHED(pick->on_complete, error);
     }
   }
 }
@@ -333,6 +334,13 @@ void RoundRobin::ExitIdleLocked() {
   }
 }
 
+void RoundRobin::ResetBackoffLocked() {
+  subchannel_list_->ResetBackoffLocked();
+  if (latest_pending_subchannel_list_ != nullptr) {
+    latest_pending_subchannel_list_->ResetBackoffLocked();
+  }
+}
+
 bool RoundRobin::DoPickLocked(PickState* pick) {
   const size_t next_ready_index =
       subchannel_list_->GetNextReadySubchannelIndexLocked();
@@ -368,13 +376,18 @@ void RoundRobin::DrainPendingPicksLocked() {
   }
 }
 
-bool RoundRobin::PickLocked(PickState* pick) {
+bool RoundRobin::PickLocked(PickState* pick, grpc_error** error) {
   if (grpc_lb_round_robin_trace.enabled()) {
     gpr_log(GPR_INFO, "[RR %p] Trying to pick (shutdown: %d)", this, shutdown_);
   }
   GPR_ASSERT(!shutdown_);
   if (subchannel_list_ != nullptr) {
     if (DoPickLocked(pick)) return true;
+  }
+  if (pick->on_complete == nullptr) {
+    *error = GRPC_ERROR_CREATE_FROM_STATIC_STRING(
+        "No pick result available but synchronous result required.");
+    return true;
   }
   /* no pick currently available. Save for later in list of pending picks */
   pick->next = pending_picks_;
@@ -645,22 +658,6 @@ void RoundRobin::NotifyOnStateChangeLocked(grpc_connectivity_state* current,
                                            grpc_closure* notify) {
   grpc_connectivity_state_notify_on_state_change(&state_tracker_, current,
                                                  notify);
-}
-
-void RoundRobin::PingOneLocked(grpc_closure* on_initiate,
-                               grpc_closure* on_ack) {
-  const size_t next_ready_index =
-      subchannel_list_->GetNextReadySubchannelIndexLocked();
-  if (next_ready_index < subchannel_list_->num_subchannels()) {
-    RoundRobinSubchannelData* selected =
-        subchannel_list_->subchannel(next_ready_index);
-    selected->connected_subchannel()->Ping(on_initiate, on_ack);
-  } else {
-    GRPC_CLOSURE_SCHED(on_initiate, GRPC_ERROR_CREATE_FROM_STATIC_STRING(
-                                        "Round Robin not connected"));
-    GRPC_CLOSURE_SCHED(on_ack, GRPC_ERROR_CREATE_FROM_STATIC_STRING(
-                                   "Round Robin not connected"));
-  }
 }
 
 void RoundRobin::UpdateLocked(const grpc_channel_args& args) {
