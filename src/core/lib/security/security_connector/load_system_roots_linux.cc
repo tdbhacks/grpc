@@ -160,9 +160,9 @@ grpc_slice LoadSystemRootCerts() {
       }
     }
   }
-  gpr_free((char*)use_custom_dir);  // Casting to non-const to fix memory leak.
   return result;
 }
+
 }  // namespace grpc_core
 
 #endif /* GPR_LINUX */
